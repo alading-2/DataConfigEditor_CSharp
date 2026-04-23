@@ -52,7 +52,7 @@ public static class CsCommentParser
         string line = lines[lineIdx].Trim();
 
         var match = Regex.Match(line,
-            @"public\s+([\w<>\?\[\],\s]+?)\s+(\w+)\s*\{[^}]*\}(?:\s*=\s*([^;]+?))?\s*;");
+            @"public\s+([\w<>\?\[\],\s]+?)\s+(\w+)\s*\{[^}]*\}(?:\s*=\s*([^;]+?))?\s*;?");
         if (match.Success)
             return (match.Groups[2].Value, match.Groups[1].Value.Trim(),
                 match.Groups[3].Success ? match.Groups[3].Value.Trim() : "");
@@ -200,20 +200,39 @@ public static class CsCommentParser
         {
             string trimmed = lines[j].Trim();
 
-            if (trimmed.Contains("</summary>"))
+            if (TryExtractSingleLineSummary(trimmed, out var singleLineSummary))
             {
+                if (!string.IsNullOrWhiteSpace(singleLineSummary))
+                    summaryLines.Insert(0, singleLineSummary);
+                break;
+            }
+
+            if (trimmed.Contains("</summary>", StringComparison.Ordinal))
+            {
+                var beforeEnd = RemoveXmlDocPrefix(trimmed)
+                    .Split("</summary>", StringSplitOptions.None)[0]
+                    .Trim();
+                if (!string.IsNullOrWhiteSpace(beforeEnd))
+                    summaryLines.Insert(0, beforeEnd);
+
                 inSummary = true;
                 continue;
             }
 
-            if (trimmed.Contains("<summary>"))
+            if (trimmed.Contains("<summary>", StringComparison.Ordinal))
+            {
+                var afterStart = RemoveXmlDocPrefix(trimmed)
+                    .Split("<summary>", StringSplitOptions.None)
+                    .Last()
+                    .Trim();
+                if (!string.IsNullOrWhiteSpace(afterStart))
+                    summaryLines.Insert(0, afterStart);
                 break;
+            }
 
             if (inSummary)
             {
-                string content = trimmed;
-                if (content.StartsWith("///")) content = content[3..].Trim();
-                else if (content.StartsWith("//")) content = content[2..].Trim();
+                string content = RemoveXmlDocPrefix(trimmed);
 
                 if (!string.IsNullOrWhiteSpace(content))
                     summaryLines.Insert(0, content);
@@ -228,6 +247,33 @@ public static class CsCommentParser
         }
 
         return string.Join(" ", summaryLines).Trim();
+    }
+
+    private static bool TryExtractSingleLineSummary(string trimmed, out string summary)
+    {
+        summary = "";
+        if (!trimmed.Contains("<summary>", StringComparison.Ordinal) ||
+            !trimmed.Contains("</summary>", StringComparison.Ordinal))
+            return false;
+
+        var content = RemoveXmlDocPrefix(trimmed);
+        var start = content.IndexOf("<summary>", StringComparison.Ordinal);
+        var end = content.IndexOf("</summary>", StringComparison.Ordinal);
+        if (start < 0 || end < 0 || end < start)
+            return false;
+
+        summary = content[(start + "<summary>".Length)..end].Trim();
+        return true;
+    }
+
+    private static string RemoveXmlDocPrefix(string text)
+    {
+        text = text.Trim();
+        if (text.StartsWith("///", StringComparison.Ordinal))
+            return text[3..].Trim();
+        if (text.StartsWith("//", StringComparison.Ordinal))
+            return text[2..].Trim();
+        return text;
     }
 }
 

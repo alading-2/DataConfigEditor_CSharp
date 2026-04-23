@@ -50,7 +50,9 @@ public sealed class CsTableParser
             {
                 Key = property.Name,
                 Header = property.Name,
-                Summary = comment?.Summary ?? "",
+                Summary = string.IsNullOrWhiteSpace(comment?.Summary)
+                    ? "未注释"
+                    : comment.Summary,
             };
         }));
 

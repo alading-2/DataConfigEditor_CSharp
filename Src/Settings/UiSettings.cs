@@ -19,11 +19,11 @@ public sealed record UiSettings
 
     public static UiSettings Default => new();
 
-    public int GridTopPadding { get; init; } = 8;
+    public int GridTopPadding { get; init; } = 48;
     public float GridFontSize { get; init; } = 9.5f;
     public int GridRowHeight { get; init; } = 28;
     public int FixedColumnWidth { get; init; } = 180;
-    public int HeaderHeight { get; init; } = 48;
+    public int HeaderHeight { get; init; } = 64;
     public int InstanceColumnWidth { get; init; } = 140;
     public bool FreezeInstanceColumn { get; init; } = true;
     public bool ShowHeaderSummary { get; init; } = true;

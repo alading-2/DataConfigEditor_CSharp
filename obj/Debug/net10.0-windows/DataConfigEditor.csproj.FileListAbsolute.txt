@@ -36,6 +36,11 @@ E:/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/refint/DataConfigEd
 E:/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.pdb
 E:/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.genruntimeconfig.cache
 E:/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/ref/DataConfigEditor.dll
+/tmp/DataConfigEditor_CSharp_app_bin/DataConfigEditor
+/tmp/DataConfigEditor_CSharp_app_bin/DataConfigEditor.deps.json
+/tmp/DataConfigEditor_CSharp_app_bin/DataConfigEditor.runtimeconfig.json
+/tmp/DataConfigEditor_CSharp_app_bin/DataConfigEditor.dll
+/tmp/DataConfigEditor_CSharp_app_bin/DataConfigEditor.pdb
 E:\Code\C#\DataConfigEditor_CSharp\bin\Debug\net10.0-windows\DataConfigEditor.exe
 E:\Code\C#\DataConfigEditor_CSharp\bin\Debug\net10.0-windows\DataConfigEditor.deps.json
 E:\Code\C#\DataConfigEditor_CSharp\bin\Debug\net10.0-windows\DataConfigEditor.runtimeconfig.json

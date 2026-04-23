@@ -35,12 +35,16 @@ public sealed class MainForm : Form
     private ToolStrip _toolStrip = null!;
     private ToolStripDropDownButton _recentButton = null!;
     private ToolStripButton _showHiddenButton = null!;
+    private ToolStripTextBox _searchBox = null!;
+    private ToolStripButton _filterCurrentButton = null!;
+    private ToolStripButton _clearFiltersButton = null!;
     private ToolStripButton _settingsButton = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _statusLabel = null!;
 
     private string? _currentDirectory;
     private TableDocument? _currentDocument;
+    private TableViewState _tableViewState = TableViewState.Empty;
     private UiSettings _uiSettings;
     private WorkspaceSettings _workspaceSettings;
 
@@ -113,6 +117,29 @@ public sealed class MainForm : Form
         };
         _toolStrip.Items.Add(_showHiddenButton);
 
+        _toolStrip.Items.Add(new ToolStripSeparator());
+        _toolStrip.Items.Add(new ToolStripLabel("搜索"));
+        _searchBox = new ToolStripTextBox
+        {
+            AutoSize = false,
+            Width = 180,
+        };
+        _searchBox.TextChanged += (_, _) =>
+        {
+            _tableViewState = _tableViewState with { SearchText = _searchBox.Text };
+            RenderCurrentTable();
+        };
+        _toolStrip.Items.Add(_searchBox);
+
+        _filterCurrentButton = new ToolStripButton("筛选当前值");
+        _filterCurrentButton.Click += (_, _) => FilterCurrentCell();
+        _toolStrip.Items.Add(_filterCurrentButton);
+
+        _clearFiltersButton = new ToolStripButton("清除筛选");
+        _clearFiltersButton.Click += (_, _) => ClearTableFilters();
+        _toolStrip.Items.Add(_clearFiltersButton);
+
+        _toolStrip.Items.Add(new ToolStripSeparator());
         _settingsButton = new ToolStripButton("设置");
         _settingsButton.Click += (_, _) => ShowSettingsDialog();
         _toolStrip.Items.Add(_settingsButton);
@@ -229,6 +256,8 @@ public sealed class MainForm : Form
             AppLog.Info(
                 $"Parse result: title={document.Title}, isTable={document.IsTable}, columns={document.Columns.Count}, rows={document.Rows.Count}");
 
+            _tableViewState = TableViewState.Empty;
+            _searchBox.Text = "";
             RenderState(_presenter.ShowDocument(document));
             UpdateStatus($"已打开文件: {filePath}");
         }
@@ -271,7 +300,7 @@ public sealed class MainForm : Form
                 _currentDocument = state.Document;
                 CreateFreshGrid(hidden: false);
                 _messageLabel.Visible = false;
-                _sheetBuilder.BuildGrid(_grid, state.Document, _uiSettings);
+                RenderCurrentTable();
                 return;
             }
             catch (Exception ex)
@@ -283,6 +312,7 @@ public sealed class MainForm : Form
         }
 
         _currentDocument = null;
+        _tableViewState = TableViewState.Empty;
         CreateFreshGrid(hidden: true);
         _messageLabel.Visible = true;
 
@@ -346,9 +376,55 @@ public sealed class MainForm : Form
         _grid.RowTemplate.Height = layout.RowHeight;
         _grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         _grid.ColumnHeadersHeight = layout.HeaderHeight;
+        _grid.ColumnHeaderMouseClick += (_, e) =>
+        {
+            if (e.ColumnIndex < 0 || e.ColumnIndex >= _grid.Columns.Count)
+                return;
+
+            _tableViewState = _tableViewState.ToggleSort(_grid.Columns[e.ColumnIndex].Name);
+            RenderCurrentTable();
+        };
 
         _gridHost.Controls.Add(_grid);
         _gridHost.Controls.SetChildIndex(_grid, 0);
+    }
+
+    private void RenderCurrentTable()
+    {
+        if (_currentDocument is null || !_currentDocument.IsTable)
+            return;
+
+        var result = _tableViewState.Apply(_currentDocument);
+        var viewDocument = new TableDocument
+        {
+            SourceFilePath = _currentDocument.SourceFilePath,
+            Title = _currentDocument.Title,
+            Columns = _currentDocument.Columns,
+            Rows = result.Rows,
+        };
+
+        _sheetBuilder.BuildGrid(_grid, viewDocument, _uiSettings);
+        UpdateTableStatus(result);
+    }
+
+    private void FilterCurrentCell()
+    {
+        if (_currentDocument is null || _grid.CurrentCell is null)
+            return;
+
+        var column = _grid.Columns[_grid.CurrentCell.ColumnIndex];
+        var value = Convert.ToString(_grid.CurrentCell.Value) ?? "";
+        _tableViewState = _tableViewState.WithFilter(new TableFilter(column.Name, TableFilterMode.Equals, value));
+        RenderCurrentTable();
+    }
+
+    private void ClearTableFilters()
+    {
+        _tableViewState = TableViewState.Empty;
+        if (_searchBox.Text.Length > 0)
+            _searchBox.Text = "";
+        else
+            RenderCurrentTable();
     }
 
     private void ShowSettingsDialog()
@@ -382,7 +458,7 @@ public sealed class MainForm : Form
         {
             CreateFreshGrid(hidden: false);
             _messageLabel.Visible = false;
-            _sheetBuilder.BuildGrid(_grid, _currentDocument, _uiSettings);
+            RenderCurrentTable();
         }
     }
 
@@ -408,5 +484,24 @@ public sealed class MainForm : Form
     private void UpdateStatus(string message)
     {
         _statusLabel.Text = message;
+    }
+
+    private void UpdateTableStatus(TableViewResult result)
+    {
+        var parts = new List<string>
+        {
+            $"显示 {result.Rows.Count} / 共 {result.TotalRows} 行",
+        };
+
+        if (result.ActiveFilterCount > 0)
+            parts.Add($"筛选 {result.ActiveFilterCount} 项");
+
+        if (!string.IsNullOrWhiteSpace(result.SearchText))
+            parts.Add($"搜索: {result.SearchText}");
+
+        if (_tableViewState.Sort.Direction != TableSortDirection.None)
+            parts.Add($"排序: {_tableViewState.Sort.ColumnKey} {_tableViewState.Sort.Direction}");
+
+        _statusLabel.Text = string.Join(" | ", parts);
     }
 }

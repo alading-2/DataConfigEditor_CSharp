@@ -10,8 +10,8 @@ public class TableLayoutOptionsTests
     {
         var options = TableLayoutOptions.FromSettings(UiSettings.Default);
 
-        Assert.Equal(8, options.ContentPadding);
-        Assert.Equal(48, options.HeaderHeight);
+        Assert.Equal(48, options.ContentPadding);
+        Assert.Equal(64, options.HeaderHeight);
         Assert.Equal(28, options.RowHeight);
         Assert.Equal(140, options.InstanceColumnWidth);
         Assert.Equal(180, options.DefaultColumnWidth);
@@ -31,9 +31,9 @@ public class TableLayoutOptionsTests
 
         var options = TableLayoutOptions.FromSettings(settings);
 
-        Assert.Equal(8, options.ContentPadding);
+        Assert.Equal(48, options.ContentPadding);
         Assert.Equal(UiSettings.MaxGridRowHeight, options.RowHeight);
         Assert.Equal(UiSettings.MaxFixedColumnWidth, options.DefaultColumnWidth);
-        Assert.Equal(UiSettings.MinHeaderHeight, options.HeaderHeight);
+        Assert.Equal(64, options.HeaderHeight);
     }
 }
