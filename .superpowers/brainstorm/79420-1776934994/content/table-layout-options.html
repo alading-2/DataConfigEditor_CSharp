@@ -1,0 +1,73 @@
+<h2>表格主界面形态</h2>
+<p class="subtitle">先确认整体工作台长什么样。三种方案都面向 C# 强类型配置，不是通用代码编辑器。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-nav">打开目录 | 保存 | 撤销 | 重做 | 筛选 | 批量编辑 | 校验</div>
+      <div style="display:flex;height:260px;">
+        <div class="mock-sidebar" style="width:26%;">DataNew<br>AbilityConfig.cs<br>EnemyConfig.cs<br>DataKey_*.cs</div>
+        <div class="mock-content" style="flex:1;">
+          <div class="label">A. 工作区 + 单表主视图</div>
+          <div style="margin-top:8px;border:1px solid #b8c2cc;">
+            <div style="display:grid;grid-template-columns:110px repeat(5,1fr);background:#263238;color:#fff;font-size:12px;">
+              <div style="padding:6px;">实例名</div><div style="padding:6px;">Name<br>名称</div><div style="padding:6px;">Trigger<br>触发模式</div><div style="padding:6px;">Cooldown<br>冷却</div><div style="padding:6px;">IconPath</div><div style="padding:6px;">Tags</div>
+            </div>
+            <div style="padding:5px;background:#edf4ff;font-size:12px;">基础信息，可折叠分组</div>
+            <div style="display:grid;grid-template-columns:110px repeat(5,1fr);font-size:12px;">
+              <div style="padding:6px;border-top:1px solid #ddd;">Dash</div><div style="padding:6px;border-top:1px solid #ddd;">冲刺</div><div style="padding:6px;border-top:1px solid #ddd;">Manual</div><div style="padding:6px;border-top:1px solid #ddd;">1.0f</div><div style="padding:6px;border-top:1px solid #ddd;">res://...</div><div style="padding:6px;border-top:1px solid #ddd;">Move</div>
+              <div style="padding:6px;border-top:1px solid #ddd;">Slam</div><div style="padding:6px;border-top:1px solid #ddd;">裂地猛击</div><div style="padding:6px;border-top:1px solid #ddd;">Auto</div><div style="padding:6px;border-top:1px solid #ddd;">3.5f</div><div style="padding:6px;border-top:1px solid #ddd;">res://...</div><div style="padding:6px;border-top:1px solid #ddd;">AoE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 工作区 + 单表主视图</h3>
+      <p>左侧选文件，右侧就是一个强表格。最适合第一阶段到完整编辑器的持续演进。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-nav">打开目录 | 类型索引 | 全局搜索 | 保存全部 | 诊断</div>
+      <div style="display:flex;height:260px;">
+        <div class="mock-sidebar" style="width:20%;">文件树<br>类型树<br>enum 树</div>
+        <div class="mock-content" style="flex:1;">
+          <div class="label">B. 多面板类型工作台</div>
+          <div style="display:grid;grid-template-columns:1fr 220px;gap:8px;margin-top:8px;">
+            <div class="placeholder" style="height:180px;">表格区：实例 x 属性</div>
+            <div class="placeholder" style="height:180px;">右侧详情：当前单元格类型、注释、原始表达式、诊断</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 多面板类型工作台</h3>
+      <p>信息最全，适合后期强类型诊断，但第一阶段界面和状态会更复杂。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-nav">表格 | 详情 | 关系 | 资源预览 | 修改记录</div>
+      <div style="display:flex;height:260px;">
+        <div class="mock-sidebar" style="width:18%;">配置类型<br>Ability<br>Unit<br>Feature</div>
+        <div class="mock-content" style="flex:1;">
+          <div class="label">C. 类 Excel 多页签</div>
+          <div style="display:flex;gap:4px;margin-top:8px;"><span class="mock-button">Ability</span><span class="mock-button">Enemy</span><span class="mock-button">Feature</span></div>
+          <div class="placeholder" style="height:170px;margin-top:8px;">多个配置表页签并排打开，适合批量跨表编辑</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 类 Excel 多页签</h3>
+      <p>最像传统表格软件，但会推高跨文件状态、保存冲突和索引复杂度。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>我的建议</h3>
+  <p>先采用 A，把单表编辑体验做到扎实：筛选、排序、多选、批量编辑、强类型单元格、诊断、保存回写。B 的右侧详情和 C 的多页签可作为后续增强，而不是第一版主结构。</p>
+</div>

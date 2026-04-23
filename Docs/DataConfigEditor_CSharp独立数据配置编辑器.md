@@ -1,10 +1,21 @@
 # DataConfigEditor_CSharp独立数据配置编辑器
 
 > **Created:** 2026-04-13
+> **Last Updated:** 2026-04-23
 > **Status:** 开发中
-> **技术栈:** .NET 8 WinForms + ReoGrid
+> **技术栈:** .NET 10 WinForms + ReoGrid
 
 ---
+
+## 零、定位修正
+
+本工具不再定义为“用 `.cs` 存数据的编辑器”，而应定义为：
+
+> **面向 C# 强类型配置的表格化查看/编辑器。**
+
+也就是说，核心不是“数据文件后缀是什么”，而是编辑器能否理解项目自己的 C# 配置 schema：POCO 属性、继承、静态实例、enum、Flags enum、`<summary>` 注释、分组标记，以及后续的强类型单元格编辑。
+
+因此工具只支持“受约束的 C# 配置形态”，不支持任意 C# 代码表格化。哪些 `.cs` 算可表格化文件，以 [C# 强类型配置可表格化规则](./CSharp强类型配置可表格化规则.md) 为准。
 
 ## 一、背景
 
@@ -22,7 +33,7 @@
 | 枚举显示混乱 | 中英混搭，OptionButton 格式错误 |
 | 启动不自动加载 | Godot `_Ready` 时序问题 |
 
-**关键决策：** 数据是纯 POCO（不继承 Resource），编辑器完全不需要依赖 Godot 运行时。使用 .NET 生态的电子表格组件 [ReoGrid](https://github.com/unvell/ReoGrid)（MIT 许可）可以获得 Excel 级体验。
+**关键决策：** 配置 schema 是纯 POCO（不继承 Resource），编辑器第一阶段不依赖 Godot 运行时，也不以 DLL 加载作为启动前提。使用 .NET 生态的电子表格组件 [ReoGrid](https://github.com/unvell/ReoGrid)（MIT 许可）可以获得接近 Excel 的表格体验。
 
 ### 1.2 ReoGrid 能力
 
@@ -47,57 +58,50 @@ ReoGrid 是 .NET 开源电子表格控件，提供：
 ### 2.1 文件结构
 
 ```
-Tools/DataConfigEditor/
-├── DataConfigEditor.csproj       ← 独立 net8.0 WinForms 项目（非 Godot SDK）
-├── Program.cs                     ← 应用入口
-├── MainForm.cs                    ← 主窗体 + ReoGrid 控件
-├── Core/
-│   ├── ConfigTypeScanner.cs       ← 扫描 DataNew/ → 匹配 DLL 中的 Type
-│   ├── PropertyMetadata.cs        ← 属性元数据（简化版，无 DataMeta 依赖）
-│   └── InstanceInfo.cs            ← 静态实例信息
-├── Parsing/
-│   ├── CsCommentParser.cs         ← 解析 .cs 源码注释（从插件移植）
-│   ├── CsFileWriter.cs            ← 保存回 .cs 文件（从插件移植）
-│   └── EnumCommentCache.cs        ← 枚举注释缓存（从插件移植）
-└── UI/
-    ├── SheetBuilder.cs            ← 构建 ReoGrid 工作表
-    ├── EnumDropdownCell.cs        ← 枚举下拉单元格（英文名 + 中文 tooltip）
-    └── ImagePreviewCell.cs        ← 路径 + 图片缩略图预览
+DataConfigEditor.csproj            ← 独立 net10.0-windows WinForms 项目
+Src/
+├── Program.cs                      ← 应用入口
+├── MainForm.cs                     ← 主窗体
+├── Workspace/                      ← 工作区打开、目录树、最近目录
+├── Documents/                      ← TableDocument / TableRow / TableCell
+├── Presentation/                   ← WorkspacePresenter
+├── Core/                           ← 旧扫描器与配置元数据
+├── Parsing/                        ← CsTableParser / SourceParser / 注释与回写
+└── UI/                             ← 表格构建
+tests/                              ← 单元测试
 ```
 
 ### 2.2 数据流
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ 1. Assembly.LoadFrom("Brotato_my.dll")               │
-│    ↓ 获取所有 ConfigNew 命名空间下的 Type              │
-│ 2. CsCommentParser.ParseFile("AbilityConfigData.cs") │
-│    ↓ 获取属性注释、分组信息                              │
-│ 3. EnumCommentCache.EnsureLoaded()                   │
-│    ↓ 获取所有枚举的中英文映射                            │
-│ 4. Type.GetProperties() + GetStaticFields()          │
-│    ↓ 获取属性列表和静态实例                              │
-│ 5. SheetBuilder.BuildSheet(reoGrid, ...)             │
-│    ↓ 构建 ReoGrid 工作表                               │
-│ 6. 用户编辑 → ReoGrid 内置撤销/重做                    │
+│ 1. 用户打开工作区目录                                  │
+│    ↓ 左侧显示文件夹与 .cs 文件树                         │
+│ 2. 点击单个 .cs 文件                                   │
 │    ↓                                                  │
-│ 7. 保存 → CsFileWriter.WriteAllChanges()             │
-│    ↓ 写回 .cs 文件                                     │
+│ 3. CsTableParser / SourceParser 解析受限配置形态        │
+│    ↓ 提取类、属性、静态实例、注释                         │
+│ 4. 生成 TableDocument 中间模型                         │
+│    ↓                                                  │
+│ 5. SheetBuilder 把 TableDocument 显示为表格             │
+│    ↓                                                  │
+│ 6. 不可表格化文件显示诊断视图                           │
 └──────────────────────────────────────────────────────┘
 ```
+
+后续阶段再增强跨文件 enum、继承链、类型索引、强类型编辑和保存回写。旧文档中“先加载 DLL 拿 Type，再读 `.cs` 注释，再回写 `.cs`”的路线只作为历史方案保留，不再是第一阶段核心架构。
 
 ### 2.3 与项目的关系
 
 ```
-Tools/DataConfigEditor/    ← 独立 .NET 8 WinForms 项目
-  ├── 读取: Data/DataNew/*.cs（源码解析注释）
-  ├── 读取: bin/Debug/net8.0/Brotato_my.dll（反射获取类型）
-  ├── 读取: assets/（图片预览）
-  └── 写入: Data/DataNew/*.cs（保存修改）
+DataConfigEditor_CSharp/   ← 独立 net10.0-windows WinForms 工具
+  ├── 读取: 用户打开工作区内的 .cs 文件
+  ├── 解析: 受限 C# 配置形态 → TableDocument
+  ├── 显示: 表格视图或诊断视图
+  └── 后续: 对可定位对象初始化器做保存回写
 
-Tools/ResourceGenerator/   ← 已有的独立工具（参考模式）
-Brotato_my.csproj          ← 主项目（排除 Tools/ 目录）
-Brotato_my.sln             ← 包含两个工具项目
+游戏项目 Data/DataNew/     ← 推荐作为主要配置工作区
+游戏项目 Src/ 或 DataKey/   ← 后续作为 enum / 基类索引来源
 ```
 
 ---
@@ -157,7 +161,7 @@ Brotato_my.sln             ← 包含两个工具项目
 ### 4.1 构建
 
 ```bash
-cd Tools/DataConfigEditor
+cd DataConfigEditor_CSharp
 dotnet restore
 dotnet build
 ```
@@ -165,35 +169,33 @@ dotnet build
 ### 4.2 运行
 
 ```bash
-dotnet run --project Tools/DataConfigEditor
+dotnet run --project DataConfigEditor.csproj
 ```
 
 或直接运行编译后的 exe。
 
 ### 4.3 操作流程
 
-1. 启动工具
-2. 选择项目根目录（自动检测或手动选择）
-3. 左侧面板选择配置类（如 `AbilityConfigData`）
-4. 表格自动加载，显示所有实例和属性
-5. 点击分组行折叠/展开
-6. 双击单元格编辑（枚举自动出现下拉框）
-7. Ctrl+Z 撤销、Ctrl+Y 重做
-8. Ctrl+多选批量编辑
-9. 点击保存 → 写回 .cs 文件
+1. 启动工具。
+2. 打开工作区目录，例如游戏项目的 `Data/DataNew`。
+3. 左侧目录树选择 `.cs` 文件。
+4. 如果文件符合可表格化规则，右侧显示表格。
+5. 如果文件不符合规则，右侧显示诊断原因。
+6. 第一阶段以只读查看为主，编辑、枚举下拉、批量修改、保存回写进入后续阶段。
 
 ---
 
 ## 五、技术要点
 
-### 5.1 反射加载
+### 5.1 解析路线
 
-工具不依赖 Godot SDK，通过 `Assembly.LoadFrom` 加载主项目编译的 DLL：
+第一阶段不加载游戏 DLL，也不执行用户代码。工具先把单个 `.cs` 文件解析成 `TableDocument`：
 
-```csharp
-var assembly = Assembly.LoadFrom(Path.Combine(projectRoot, ".godot", "mono", "temp", "bin", "Debug", "Brotato_my.dll"));
-var types = assembly.GetTypes().Where(t => t.Namespace?.Contains("ConfigNew") == true);
+```text
+.cs 文件 → CsTableParser → TableDocument → 表格或诊断视图
 ```
+
+后续如果正则解析无法稳定覆盖对象初始化器、注释 trivia、继承节点等结构，再切换到 Roslyn Syntax API。工程级语义、MSBuildWorkspace 和 DLL 只在确实需要真实项目语义时再引入。
 
 ### 5.2 移植策略
 
@@ -204,7 +206,7 @@ var types = assembly.GetTypes().Where(t => t.Namespace?.Contains("ConfigNew") ==
 | 移除 `#if TOOLS` / `#endif` | 不再是 Godot 插件 |
 | 移除 `using Godot` | 替换 `GD.Print` → `Console.WriteLine` |
 | 替换 `ProjectSettings.GlobalizePath` | 改为传入项目根路径参数 |
-| 移除 `DataMeta`/`DataKey`/`DataRegistry` 依赖 | 简化为纯反射 |
+| 移除 `DataMeta`/`DataKey`/`DataRegistry` 依赖 | 简化为受限源码解析和表格文档模型 |
 
 ### 5.3 枚举注释来源
 
@@ -229,14 +231,14 @@ CsCommentParser 解析 `<summary>` 注释 → EnumCommentCache 缓存 → 枚举
 
 | | 旧方案（Godot 插件） | 新方案（独立工具） |
 |---|---|---|
-| 位置 | `addons/DataConfigEditor/` | `Tools/DataConfigEditor/` |
-| 依赖 | Godot SDK、项目 DLL | 仅 .NET 8 + ReoGrid |
+| 位置 | `addons/DataConfigEditor/` | `DataConfigEditor_CSharp/` |
+| 依赖 | Godot SDK、项目 DLL | .NET 10 WinForms + ReoGrid，第一阶段不依赖游戏 DLL |
 | 表格控件 | GridContainer（手工节点） | ReoGrid（电子表格） |
 | 撤销/重做 | 无 | 内置 |
 | 分组折叠 | 无 | 内置 Outlines |
 | 多选 | 无 | 内置 |
 | 图片预览 | 无 | ImageCell |
 | 枚举显示 | 中英混搭 | 英文名 + 中文 tooltip |
-| 保存 | CsFileWriter（共用） | CsFileWriter（移植） |
+| 保存 | CsFileWriter（共用） | 后续仅回写可定位对象初始化器 |
 
 旧插件暂时保留在 `addons/DataConfigEditor/`，待新工具稳定后可移除。

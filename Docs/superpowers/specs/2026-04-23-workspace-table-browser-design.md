@@ -30,8 +30,26 @@
 - 不做保存回写。
 - 不做完整强类型语义校验。
 - 不把工具演化成通用 IDE。
+- 不把任意 C# 代码都尝试转换成表格。
 
 这些内容保留给后续阶段。
+
+## 2.1 可表格化规则
+
+“哪些 `.cs` 能转换成表格”已经单独定为硬规则，见：
+
+- `Docs/CSharp强类型配置可表格化规则.md`
+
+第一阶段按其中的 Phase 1 边界执行：
+
+- 单个 `.cs` 文件中只能有一个主配置 class。
+- 主配置 class 必须有可作为列的 public 实例属性。
+- 文件必须有可作为行的 `public static readonly` 静态实例。
+- 静态实例必须使用 `new()` 或 `new Type()` 对象初始化器。
+- `<summary>` 用于属性说明和实例说明。
+- 不满足规则时显示诊断视图，不进入源码编辑或任意代码解释。
+
+Schema 文件、enum 文件、普通行为代码文件都不是数据表文件。它们可以在后续阶段参与继承、枚举下拉和类型索引，但第一阶段不把它们打开成空表。
 
 ## 3. 当前代码库实际状态
 
@@ -196,6 +214,8 @@
 - 不可表格化：显示说明文本，例如“当前文件无法转换为表格视图”。
 - 加载失败：显示错误态，但不影响工作区继续使用。
 
+不可表格化原因必须具体，例如“缺少静态实例”“没有可作为列的 public 属性”“发现多个候选配置类”“静态实例不是对象初始化器”。避免只显示泛化错误。
+
 ### 7.4 最近目录
 
 最近目录本地缓存保存：
@@ -354,6 +374,7 @@ UI 只负责交互呈现，不直接承担解析拼装逻辑。
 
 ## 14. 参考资料
 
+- C# 强类型配置可表格化规则: ../../CSharp强类型配置可表格化规则.md
 - Roslyn Syntax Analysis: https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/get-started/syntax-analysis
 - ReoGrid GitHub: https://github.com/unvell/ReoGrid
 - Microsoft Build Locator: https://github.com/microsoft/MSBuildLocator

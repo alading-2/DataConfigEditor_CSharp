@@ -2,9 +2,19 @@
 
 > **Session ID:** 完整会话记录见 `tres改纯C#.md`
 > **Created:** 2026-04-09
-> **Last Updated:** 2026-04-09
+> **Last Updated:** 2026-04-23
 
 ---
+
+## 零、定位修正
+
+这份方案的核心不应理解为“把数据存到 `.cs` 文件里”，而应理解为：
+
+> **让 C# 强类型配置定义驱动表格化查看和编辑。**
+
+`.cs` 只是承载形式，真正的真相源是 C# 配置 schema：POCO 属性、继承、静态实例、enum、`<summary>` 注释和分组标记。工具只编辑受约束的配置子集，不编辑任意 C# 代码。
+
+可表格化文件的硬规则已经单独整理到 [C# 强类型配置可表格化规则](./CSharp强类型配置可表格化规则.md)。后续实现和文档应以该规则为准。
 
 ## 一、核心问题
 
@@ -80,37 +90,43 @@ Data/
 
 ---
 
-## 三、插件实现
+## 三、工具实现方向
 
-### 3.1 文件结构
+早期方案以 Godot 插件为主，并通过反射读取运行时类型。当前方向已经调整为独立 WinForms 工具，先以工作区、文档模型和受限源码解析为核心：
 
 ```
-addons/DataConfigEditor/
-├── plugin.cfg                    # 插件配置（v3.0）
-├── DataConfigEditorPlugin.cs     # 主入口（主屏幕插件）
-├── ConfigTablePanel.cs           # 表格 UI（GridContainer）
-├── ConfigReflectionCache.cs      # 反射缓存
-├── CsCommentParser.cs            # 源码注释解析
-├── CsFileWriter.cs               # 保存回 .cs 文件
-└── EnumCommentCache.cs           # 枚举中文注释缓存
+工作区目录
+  ↓
+只显示文件夹和 .cs 文件
+  ↓
+点击单个 .cs
+  ↓
+CsTableParser 解析受限配置形态
+  ↓
+TableDocument 中间模型
+  ↓
+表格视图或诊断视图
 ```
 
-### 3.2 功能特性
+旧 Godot 插件中的反射、GridContainer 和直接绑定运行时 Type 的做法作为历史背景保留，不再作为第一阶段主架构。
+
+### 3.1 功能特性
 
 | 功能 | 实现方式 |
 |------|---------|
-| 普通 Enum 下拉 | `OptionButton` + 解析枚举成员注释 |
-| `[Flags]` 枚举编辑 | `MenuButton + PopupMenu` 多选勾选，回写组合枚举名 |
-| 多层表头 | 行=实例布局下显示“分类 / DataKey / DataKey说明 / 字段” |
-| 元数据映射 | `Property -> DataKey -> DataMeta`，支持别名和 `const string` 路径键 |
+| 工作区浏览 | 左侧目录树只显示文件夹和 `.cs` |
+| 文件分类 | 数据表文件显示表格，Schema/enum/普通代码显示诊断 |
+| 普通 Enum 下拉 | 后续通过工作区 enum 索引 + 枚举成员注释实现 |
+| `[Flags]` 枚举编辑 | 后续用多选弹窗，回写组合枚举名 |
+| 表头说明 | 属性名 + `<summary>` 注释 |
 | 布局切换 | 按钮：行=实例列=属性 ↔ 行=属性列=实例 |
-| 类型化单元格 | Enum→OptionButton, bool→CheckBox, 数值→SpinBox |
-| 路径字段 | `PathLineEdit` 支持拖拽项目内资源、自动转 `res://`、即时校验 |
-| 批量修改 | 工具栏选择属性后，对当前配置类所有实例批量赋值 |
+| 类型化单元格 | 后续支持 Enum、bool、数值、路径字符串等 |
+| 路径字段 | 以 string 为底层数据，UI 按命名约定增强 |
+| 批量修改 | 后续基于表格选择区域实现 |
 | 搜索过滤 | 按属性名/注释搜索 |
-| 保存回源码 | 正则匹配静态初始化器，替换属性值 |
+| 保存回源码 | 后续仅对可定位的对象初始化器赋值回写 |
 
-### 3.3 关键代码模式
+### 3.2 关键代码模式
 
 **POCO 配置类示例：**
 ```csharp
@@ -137,18 +153,20 @@ namespace Slime.ConfigNew.Abilities
 }
 ```
 
-**静态实例加载：**
+**静态实例识别：**
+
+工具不执行 `Dash` 字段，也不通过反射读取字段值，而是在源码中识别受限模式：
+
 ```csharp
-var staticFields = configType
-    .GetFields(BindingFlags.Public | BindingFlags.Static)
-    .Where(f => f.IsInitOnly && f.FieldType == configType);
-    
-foreach (var field in staticFields)
+public static readonly AbilityConfigData Dash = new()
 {
-    var value = field.GetValue(null); // 获取静态字段值
-    instances.Add(new InstanceInfo { Name = field.Name, Instance = value });
-}
+    Name = "冲刺",
+    AbilityTriggerMode = AbilityTriggerMode.Manual,
+    AbilityCooldown = 1.0f,
+};
 ```
+
+该字段会被转换成一行：字段名 `Dash` 是稳定实例 ID，对象初始化器中的属性赋值是单元格值。
 
 ---
 
@@ -177,17 +195,8 @@ foreach (var field in staticFields)
 **问题：** `EnemyConfig` 继承 `UnitConfig`，但原插件只显示子类属性
 
 **解决：**
-```csharp
-private static void CollectPropertiesRecursive(Type type, List<PropertyInfo> result)
-{
-    if (type == null || type == typeof(object)) return;
-    
-    var props = type.GetProperties(BindingFlags.DeclaredOnly | ...);
-    result.AddRange(props);
-    
-    CollectPropertiesRecursive(type.BaseType, result); // 递归父类
-}
-```
+
+后续通过工作区类型索引查找基类源码，按源码顺序合并父类属性和子类属性。第一阶段如果找不到基类，应该降级显示当前文件属性，并给出“继承信息不完整”的诊断。
 
 ### 4.4 保存回 .cs 文件
 
@@ -207,9 +216,9 @@ private static void CollectPropertiesRecursive(Type type, List<PropertyInfo> res
 | 对比项 | Luban | 本方案 |
 |--------|-------|--------|
 | 数据格式 | Excel/JSON/YAML → C# | 直接 C# |
-| 工作流 | 外部编辑器 → 生成代码 | Godot 内编辑 |
+| 工作流 | 外部编辑器 → 生成代码 | C# schema → 表格查看/编辑 → 回写受限初始化器 |
 | 注释支持 | Excel 备注 | C# `<summary>` |
-| Godot 集成 | 需要适配 | 原生 EditorPlugin |
+| Godot 集成 | 需要适配 | 不依赖 Godot 运行时，路径用字符串保持低耦合 |
 
 ### 5.2 resources_spreadsheet_view
 
@@ -229,8 +238,9 @@ private static void CollectPropertiesRecursive(Type type, List<PropertyInfo> res
 | 问题 | 严重性 | 状态 |
 |------|--------|------|
 | 大量单元格性能问题 | 低 | 待优化（建议虚拟化滚动） |
-| 无撤销/重做功能 | 低 | 待实现 |
-| string 路径缺少文件选择器按钮 | 低 | 待补文件对话框（当前已支持拖拽 + 校验） |
+| 第一阶段只读查看 | 中 | 编辑与保存回写进入后续阶段 |
+| 继承/enum 需要跨文件索引 | 中 | Phase 2 处理 |
+| string 路径缺少文件选择器按钮 | 低 | 待补文件对话框和资源校验 |
 
 ### 6.2 优化方向
 
@@ -241,7 +251,9 @@ private static void CollectPropertiesRecursive(Type type, List<PropertyInfo> res
 
 ---
 
-## 七、使用指南
+## 七、历史插件使用指南
+
+以下内容记录旧 Godot 插件的使用方式，仅作为迁移背景。当前独立工具的使用方式以 `DataConfigEditor_CSharp独立数据配置编辑器.md` 为准。
 
 ### 7.1 启用插件
 
