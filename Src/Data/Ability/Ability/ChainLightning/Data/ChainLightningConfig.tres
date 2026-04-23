@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ChainAbilityConfig" format=3 uid="uid://chainlight002"]
+
+[ext_resource type="Script" uid="uid://b2x8xfldj3ijm" path="res://Data/Data/Ability/Ability/ChainLightning/Data/ChainAbilityConfig.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+Name = "连锁闪电"
+FeatureGroupId = "技能.主动"
+Description = "释放链式闪电，在多个敌人间弹跳造成魔法伤害，每次弹跳伤害衰减"
+AbilityIcon = ExtResource("2_icon")
+AbilityTriggerMode = 1
+AbilityCostType = 1
+AbilityCooldown = 1.0
+AbilityTargetSelection = 1
+AbilityTargetGeometry = 1
+AbilityTargetTeamFilter = 2
+TargetSorting = 1
+AbilityCastRange = 600.0
+AbilityDamage = 50.0

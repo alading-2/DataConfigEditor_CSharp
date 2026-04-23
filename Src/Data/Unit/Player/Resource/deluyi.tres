@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PlayerConfig" format=3 uid="uid://dffk45e63vq7a"]
+
+[ext_resource type="PackedScene" uid="uid://bcoxs106bdeg4" path="res://assets/Unit/Player/deluyi/AnimatedSprite2D/deluyi.tscn" id="1_85yxy"]
+[ext_resource type="Script" uid="uid://c0gmo3jqybae1" path="res://Data/Data/Unit/Player/PlayerConfig.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+Name = "德鲁伊"
+Team = 1
+DeathType = 1
+VisualScenePath = ExtResource("1_85yxy")
+HealthBarHeight = 120.0
+BaseHp = 100.0
+BaseHpRegen = 1.0
+BaseAttack = 10.0
+AttackRange = 150.0
+CritRate = 5.0
+BaseDefense = 5.0
+MoveSpeed = 200.0

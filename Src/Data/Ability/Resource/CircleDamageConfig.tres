@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AbilityConfig" format=3 uid="uid://duhci6vbwoav6"]
+
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="1_elfag"]
+[ext_resource type="Script" uid="uid://djyj4vnndpdaq" path="res://Data/Data/Ability/AbilityConfig.cs" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://dju0murovtl7b" path="res://assets/Effect/003/AnimatedSprite2D/003.tscn" id="2_h8mow"]
+
+[resource]
+script = ExtResource("1_script")
+Name = "圆环伤害"
+FeatureGroupId = "技能.主动"
+Description = "周身燃起烈焰光环，每秒对周围敌人造成魔法伤害"
+AbilityIcon = ExtResource("1_elfag")
+AbilityType = 1
+AbilityTriggerMode = 4
+AbilityCooldown = 1.0
+AbilityTargetGeometry = 1
+AbilityTargetTeamFilter = 2
+AbilityEffectRadius = 500.0
+EffectScene = ExtResource("2_h8mow")
+AbilityDamage = 10.0

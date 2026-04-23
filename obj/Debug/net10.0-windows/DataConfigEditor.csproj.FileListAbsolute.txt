@@ -1,0 +1,5 @@
+/mnt/e/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.csproj.AssemblyReference.cache
+/mnt/e/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.GeneratedMSBuildEditorConfig.editorconfig
+/mnt/e/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.AssemblyInfoInputs.cache
+/mnt/e/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.AssemblyInfo.cs
+/mnt/e/Code/C#/DataConfigEditor_CSharp/obj/Debug/net10.0-windows/DataConfigEditor.csproj.CoreCompileInputs.cache

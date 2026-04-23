@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AbilityConfig" format=3 uid="uid://j2jfh4kpaw72"]
+
+[ext_resource type="Script" uid="uid://djyj4vnndpdaq" path="res://Data/Data/Ability/AbilityConfig.cs" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://cfjp1v7dcv76c" path="res://assets/Effect/lrsc3/AnimatedSprite2D/lrsc3.tscn" id="2_7ltdx"]
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+Name = "冲刺"
+FeatureGroupId = "技能.位移"
+Description = "高速冲向目标方向，瞬间位移躲避危险"
+AbilityIcon = ExtResource("2_icon")
+AbilityTriggerMode = 1
+AbilityCooldown = 1.0
+AbilityCastRange = 300.0
+AbilityEffectRadius = 300.0
+EffectScene = ExtResource("2_7ltdx")

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="TargetingIndicatorConfig" format=3 uid="uid://bxnho8quywie4"]
+
+[ext_resource type="Script" uid="uid://b28snsfnsk4ie" path="res://Data/Data/Unit/Targeting/TargetingIndicatorConfig.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+Name = "TargetingIndicator"
+BaseHp = 1000000.0
+BaseAttackSpeed = 0.0
+MoveSpeed = 400.0

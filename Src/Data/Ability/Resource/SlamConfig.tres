@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AbilityConfig" format=3 uid="uid://crackslam001"]
+
+[ext_resource type="Script" uid="uid://djyj4vnndpdaq" path="res://Data/Data/Ability/AbilityConfig.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="2_icon"]
+[ext_resource type="PackedScene" uid="uid://bo6b3hxqowflh" path="res://assets/Effect/020/AnimatedSprite2D/020.tscn" id="2_r1cb3"]
+
+[resource]
+script = ExtResource("1_script")
+Name = "猛击"
+FeatureGroupId = "技能.主动"
+Description = "在角色周围随机位置猛击地面，对范围内敌人造成物理伤害"
+AbilityIcon = ExtResource("2_icon")
+AbilityTriggerMode = 1
+AbilityCostType = 1
+AbilityCooldown = 1.0
+AbilityTargetGeometry = 1
+AbilityTargetTeamFilter = 2
+AbilityCastRange = 400.0
+AbilityEffectRadius = 300.0
+EffectScene = ExtResource("2_r1cb3")
+AbilityDamage = 30.0

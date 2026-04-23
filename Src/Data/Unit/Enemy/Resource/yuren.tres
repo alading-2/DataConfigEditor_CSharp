@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyConfig" format=3 uid="uid://bs7cv8mbdsw2p"]
+
+[ext_resource type="PackedScene" uid="uid://xulpywb2d61u" path="res://assets/Unit/Enemy/yuren/AnimatedSprite2D/yuren.tscn" id="1_visual"]
+[ext_resource type="Script" uid="uid://ce7cjavr7yk8u" path="res://Data/Data/Unit/Enemy/EnemyConfig.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+ExpReward = 2
+SpawnMinWave = 1
+SpawnInterval = 2.0
+SingleSpawnCount = 3
+SingleSpawnVariance = 1
+Name = "鱼人"
+Team = 2
+VisualScenePath = ExtResource("1_visual")
+BaseHp = 150.0
+BaseAttack = 6.0
+AttackRange = 200.0
+BaseDefense = 1.0
+MoveSpeed = 150.0

@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="AbilityConfig" format=3 uid="uid://bodkl36xhwaqd"]
+
+[ext_resource type="Script" uid="uid://djyj4vnndpdaq" path="res://Data/Data/Ability/AbilityConfig.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="2_icon"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_e16g5"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_icon")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[sub_resource type="PackedScene" id="PackedScene_f6a5r"]
+_bundled = {
+"conn_count": 0,
+"conns": PackedInt32Array(),
+"editable_instances": [],
+"id_paths": [],
+"names": PackedStringArray("Orb", "AnimatedSprite2D", "scale", "modulate", "sprite_frames", "animation"),
+"node_count": 1,
+"node_ids": PackedInt32Array(0),
+"node_paths": [],
+"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 4, 2, 0, 3, 1, 4, 2, 5, 3, 0),
+"variants": [Vector2(0.1, 0.1), Color(0.360784, 0.823529, 1, 1), SubResource("SpriteFrames_e16g5"), &"default"],
+"version": 3
+}
+
+[resource]
+script = ExtResource("1_script")
+Name = "环绕技能"
+FeatureGroupId = "技能.被动"
+Description = "生成多个投射物环绕玩家旋转，碰触敌人造成伤害（验证 Orbit 模式）"
+AbilityIcon = ExtResource("2_icon")
+AbilityTriggerMode = 1
+AbilityCooldown = 1.0
+ProjectileScene = SubResource("PackedScene_f6a5r")
+AbilityDamage = 20.0

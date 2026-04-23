@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="AbilityConfig" format=3 uid="uid://dac3gxt8ddrl1"]
+
+[ext_resource type="Script" uid="uid://djyj4vnndpdaq" path="res://Data/Data/Ability/AbilityConfig.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://t23b5pxvj8jd" path="res://icon.svg" id="2_icon"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_1g1vk"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_icon")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[sub_resource type="PackedScene" id="PackedScene_uxcpe"]
+_bundled = {
+"conn_count": 0,
+"conns": PackedInt32Array(),
+"editable_instances": [],
+"id_paths": [],
+"names": PackedStringArray("Needle", "AnimatedSprite2D", "scale", "modulate", "sprite_frames", "animation"),
+"node_count": 1,
+"node_ids": PackedInt32Array(0),
+"node_paths": [],
+"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 4, 2, 0, 3, 1, 4, 2, 5, 3, 0),
+"variants": [Vector2(0.16, 0.04), Color(1, 0.85098, 0.352941, 1), SubResource("SpriteFrames_1g1vk"), &"default"],
+"version": 3
+}
+
+[resource]
+script = ExtResource("1_script")
+Name = "圆弧射击"
+FeatureGroupId = "技能.投射物"
+Description = "发射沿圆弧轨迹飞行的投射物（验证 CircularArc 模式）"
+AbilityIcon = ExtResource("2_icon")
+AbilityTriggerMode = 1
+AbilityCooldown = 1.0
+ProjectileScene = SubResource("PackedScene_uxcpe")
+AbilityDamage = 26.0
