@@ -14,9 +14,13 @@ public sealed class SheetBuilder
         try
         {
             settings = settings.Normalize();
+            var layout = TableLayoutOptions.FromSettings(settings);
             grid.Rows.Clear();
             grid.Columns.Clear();
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.ColumnHeadersHeight = layout.HeaderHeight;
+            grid.RowTemplate.Height = layout.RowHeight;
 
             if (!document.IsTable || document.Columns.Count == 0 || document.Rows.Count == 0)
                 return;
@@ -26,13 +30,13 @@ public sealed class SheetBuilder
                 var gridColumn = new DataGridViewTextBoxColumn
                 {
                     Name = column.Key,
-                    HeaderText = string.IsNullOrEmpty(column.Summary)
-                        ? column.Header
-                        : $"{column.Header}\n{column.Summary}",
+                    HeaderText = layout.ShowHeaderSummary && !string.IsNullOrEmpty(column.Summary)
+                        ? $"{column.Header}\n{column.Summary}"
+                        : column.Header,
                     SortMode = DataGridViewColumnSortMode.NotSortable,
                     ReadOnly = true,
-                    Frozen = column.Key == "__instance",
-                    Width = column.Key == "__instance" ? 140 : settings.FixedColumnWidth,
+                    Frozen = layout.FreezeInstanceColumn && column.Key == "__instance",
+                    Width = column.Key == "__instance" ? layout.InstanceColumnWidth : layout.DefaultColumnWidth,
                 };
                 grid.Columns.Add(gridColumn);
             }
@@ -42,7 +46,7 @@ public sealed class SheetBuilder
                 var values = new List<string> { row.Header };
                 values.AddRange(row.Cells.Select(cell => cell.Value));
                 var rowIndex = grid.Rows.Add(values.Cast<object>().ToArray());
-                grid.Rows[rowIndex].Height = settings.GridRowHeight;
+                grid.Rows[rowIndex].Height = layout.RowHeight;
             }
 
             if (grid.Rows.Count > 0 && grid.Columns.Count > 0)

@@ -13,6 +13,8 @@ public class UiSettingsTests
             GridFontSize = 100,
             GridRowHeight = 1,
             FixedColumnWidth = 20,
+            HeaderHeight = 999,
+            InstanceColumnWidth = 20,
         };
 
         var normalized = settings.Normalize();
@@ -21,6 +23,8 @@ public class UiSettingsTests
         Assert.Equal(UiSettings.MaxGridFontSize, normalized.GridFontSize);
         Assert.Equal(UiSettings.MinGridRowHeight, normalized.GridRowHeight);
         Assert.Equal(UiSettings.MinFixedColumnWidth, normalized.FixedColumnWidth);
+        Assert.Equal(UiSettings.MaxHeaderHeight, normalized.HeaderHeight);
+        Assert.Equal(UiSettings.MinInstanceColumnWidth, normalized.InstanceColumnWidth);
     }
 
     [Fact]

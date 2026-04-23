@@ -2,21 +2,36 @@ namespace DataConfigEditor.Workspace;
 
 public sealed class WorkspaceService
 {
-    public WorkspaceEntry BuildTree(string rootPath)
+    public WorkspaceEntry BuildTree(string rootPath, WorkspaceSettings? settings = null)
     {
         if (!Directory.Exists(rootPath))
             throw new DirectoryNotFoundException(rootPath);
 
-        return BuildEntry(rootPath);
+        var effectiveSettings = settings ?? WorkspaceSettings.Default;
+        var matcher = new WorkspaceExcludeMatcher(rootPath, effectiveSettings);
+        return BuildEntry(rootPath, matcher, effectiveSettings, inheritedHidden: false)
+            ?? throw new DirectoryNotFoundException(rootPath);
     }
 
-    private static WorkspaceEntry BuildEntry(string path)
+    private static WorkspaceEntry? BuildEntry(
+        string path,
+        WorkspaceExcludeMatcher matcher,
+        WorkspaceSettings settings,
+        bool inheritedHidden)
     {
-        if (Directory.Exists(path))
+        var isDirectory = Directory.Exists(path);
+        var isHidden = inheritedHidden || matcher.IsExcluded(path, isDirectory);
+
+        if (isHidden && !settings.ShowHiddenEntries)
+            return null;
+
+        if (isDirectory)
         {
             var children = Directory.GetDirectories(path)
-                .Select(BuildEntry)
-                .Concat(Directory.GetFiles(path, "*.cs").Select(BuildEntry))
+                .Select(child => BuildEntry(child, matcher, settings, isHidden))
+                .Concat(Directory.GetFiles(path).Select(child => BuildEntry(child, matcher, settings, isHidden)))
+                .Where(entry => entry is not null)
+                .Select(entry => entry!)
                 .OrderBy(entry => entry.IsDirectory ? 0 : 1)
                 .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -26,6 +41,7 @@ public sealed class WorkspaceService
                 Name = Path.GetFileName(path),
                 FullPath = path,
                 IsDirectory = true,
+                IsHidden = isHidden,
                 Children = children,
             };
         }
@@ -35,6 +51,7 @@ public sealed class WorkspaceService
             Name = Path.GetFileName(path),
             FullPath = path,
             IsDirectory = false,
+            IsHidden = isHidden,
         };
     }
 }
