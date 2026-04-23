@@ -25,6 +25,7 @@ public sealed class MainForm : Form
     private readonly SheetBuilder _sheetBuilder = new();
     private readonly RecentDirectoryStore _recentStore;
     private readonly UiSettingsStore _uiSettingsStore;
+    private readonly WorkspaceSettingsStore _workspaceSettingsStore;
 
     private SplitContainer _split = null!;
     private Panel _gridHost = null!;
@@ -33,13 +34,15 @@ public sealed class MainForm : Form
     private Label _messageLabel = null!;
     private ToolStrip _toolStrip = null!;
     private ToolStripDropDownButton _recentButton = null!;
-    private ToolStripDropDownButton _settingsButton = null!;
+    private ToolStripButton _showHiddenButton = null!;
+    private ToolStripButton _settingsButton = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _statusLabel = null!;
 
     private string? _currentDirectory;
     private TableDocument? _currentDocument;
     private UiSettings _uiSettings;
+    private WorkspaceSettings _workspaceSettings;
 
     public MainForm(AppLaunchOptions launchOptions)
     {
@@ -50,7 +53,9 @@ public sealed class MainForm : Form
             "DataConfigEditor");
         _recentStore = new RecentDirectoryStore(Path.Combine(appData, "recent-directories.json"));
         _uiSettingsStore = new UiSettingsStore(Path.Combine(appData, "ui-settings.json"));
+        _workspaceSettingsStore = new WorkspaceSettingsStore(Path.Combine(appData, "workspace-settings.json"));
         _uiSettings = _uiSettingsStore.Load();
+        _workspaceSettings = _workspaceSettingsStore.Load();
 
         Text = "DataConfigEditor - 工作区表格浏览器";
         Size = new Size(1400, 800);
@@ -94,9 +99,23 @@ public sealed class MainForm : Form
         _recentButton = new ToolStripDropDownButton("最近目录");
         _toolStrip.Items.Add(_recentButton);
 
-        _settingsButton = new ToolStripDropDownButton("设置");
+        _showHiddenButton = new ToolStripButton("显示隐藏项")
+        {
+            CheckOnClick = true,
+            Checked = _workspaceSettings.ShowHiddenEntries,
+        };
+        _showHiddenButton.CheckedChanged += (_, _) =>
+        {
+            _workspaceSettings = _workspaceSettings with { ShowHiddenEntries = _showHiddenButton.Checked };
+            _workspaceSettingsStore.Save(_workspaceSettings);
+            if (!string.IsNullOrEmpty(_currentDirectory))
+                OpenWorkspace(_currentDirectory);
+        };
+        _toolStrip.Items.Add(_showHiddenButton);
+
+        _settingsButton = new ToolStripButton("设置");
+        _settingsButton.Click += (_, _) => ShowSettingsDialog();
         _toolStrip.Items.Add(_settingsButton);
-        BindSettingsMenu();
         Controls.Add(_toolStrip);
 
         _split = new SplitContainer
@@ -121,7 +140,7 @@ public sealed class MainForm : Form
         _gridHost = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(0, _uiSettings.GridTopPadding, 0, 0),
+            Padding = new Padding(TableLayoutOptions.FromSettings(_uiSettings).ContentPadding),
         };
         rightPanel.Controls.Add(_gridHost);
 
@@ -179,7 +198,7 @@ public sealed class MainForm : Form
         try
         {
             _currentDirectory = directoryPath;
-            var root = _workspaceService.BuildTree(directoryPath);
+            var root = _workspaceService.BuildTree(directoryPath, _workspaceSettings);
             BindTree(root);
 
             var recents = _recentStore.Load()
@@ -233,6 +252,9 @@ public sealed class MainForm : Form
     private static TreeNode CreateNode(WorkspaceEntry entry)
     {
         var node = new TreeNode(entry.Name) { Tag = entry.FullPath };
+        if (entry.IsHidden)
+            node.ForeColor = SystemColors.GrayText;
+
         foreach (var child in entry.Children)
             node.Nodes.Add(CreateNode(child));
         return node;
@@ -285,6 +307,8 @@ public sealed class MainForm : Form
 
     private void CreateFreshGrid(bool hidden)
     {
+        var layout = TableLayoutOptions.FromSettings(_uiSettings);
+
         if (_grid != null)
         {
             _gridHost.Controls.Remove(_grid);
@@ -308,7 +332,7 @@ public sealed class MainForm : Form
             ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableWithoutHeaderText,
             RowTemplate =
             {
-                Height = _uiSettings.GridRowHeight,
+                Height = layout.RowHeight,
             },
         };
 
@@ -319,76 +343,40 @@ public sealed class MainForm : Form
         _grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
         _grid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", _uiSettings.GridFontSize, FontStyle.Bold);
         _grid.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", _uiSettings.GridFontSize);
-        _grid.RowTemplate.Height = _uiSettings.GridRowHeight;
-        _grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+        _grid.RowTemplate.Height = layout.RowHeight;
+        _grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        _grid.ColumnHeadersHeight = layout.HeaderHeight;
 
         _gridHost.Controls.Add(_grid);
         _gridHost.Controls.SetChildIndex(_grid, 0);
     }
 
-    private void BindSettingsMenu()
+    private void ShowSettingsDialog()
     {
-        _settingsButton.DropDownItems.Clear();
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            $"表格顶部留白 +  当前: {_uiSettings.GridTopPadding}px",
-            settings => UiSettingsAdjuster.IncreaseTopPadding(settings)));
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            "表格顶部留白 -",
-            settings => UiSettingsAdjuster.DecreaseTopPadding(settings)));
-        _settingsButton.DropDownItems.Add(new ToolStripSeparator());
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            $"字体 +  当前: {_uiSettings.GridFontSize:0.#}",
-            settings => UiSettingsAdjuster.IncreaseFontSize(settings)));
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            "字体 -",
-            settings => UiSettingsAdjuster.DecreaseFontSize(settings)));
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            $"行高 +  当前: {_uiSettings.GridRowHeight}px",
-            settings => UiSettingsAdjuster.IncreaseRowHeight(settings)));
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            "行高 -",
-            settings => UiSettingsAdjuster.DecreaseRowHeight(settings)));
-        _settingsButton.DropDownItems.Add(new ToolStripSeparator());
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            $"固定列宽 +  当前: {_uiSettings.FixedColumnWidth}px",
-            settings => UiSettingsAdjuster.IncreaseColumnWidth(settings)));
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            "固定列宽 -",
-            settings => UiSettingsAdjuster.DecreaseColumnWidth(settings)));
-        _settingsButton.DropDownItems.Add(CreateColumnSizingItem("列宽: 固定", GridColumnSizingMode.Fixed));
-        _settingsButton.DropDownItems.Add(CreateColumnSizingItem("列宽: 自动适配", GridColumnSizingMode.AutoFitDisplayedCells));
-        _settingsButton.DropDownItems.Add(new ToolStripSeparator());
-        _settingsButton.DropDownItems.Add(CreateSettingsItem(
-            "恢复默认设置",
-            _ => UiSettingsAdjuster.Reset()));
+        using var dialog = new SettingsDialog(_uiSettings, _workspaceSettings, ApplySettingsResult);
+        dialog.ShowDialog(this);
     }
 
-    private ToolStripMenuItem CreateSettingsItem(string text, Func<UiSettings, UiSettings> update)
+    private void ApplySettingsResult(SettingsDialogResult result)
     {
-        var item = new ToolStripMenuItem(text);
-        item.Click += (_, _) => UpdateUiSettings(update);
-        return item;
-    }
-
-    private ToolStripMenuItem CreateColumnSizingItem(string text, GridColumnSizingMode mode)
-    {
-        var item = CreateSettingsItem(text, settings => UiSettingsAdjuster.SetColumnSizingMode(settings, mode));
-        item.Checked = _uiSettings.ColumnSizingMode == mode;
-        return item;
-    }
-
-    private void UpdateUiSettings(Func<UiSettings, UiSettings> update)
-    {
-        _uiSettings = update(_uiSettings).Normalize();
+        _uiSettings = result.UiSettings.Normalize();
+        _workspaceSettings = result.WorkspaceSettings;
         _uiSettingsStore.Save(_uiSettings);
+        _workspaceSettingsStore.Save(_workspaceSettings);
         ApplyUiSettings();
-        BindSettingsMenu();
-        UpdateStatus("设置已保存并应用。");
+
+        if (_showHiddenButton.Checked != _workspaceSettings.ShowHiddenEntries)
+            _showHiddenButton.Checked = _workspaceSettings.ShowHiddenEntries;
+
+        if (!string.IsNullOrEmpty(_currentDirectory))
+            OpenWorkspace(_currentDirectory);
+
+        UpdateStatus(result.ShouldClose ? "设置已保存。" : "设置已应用。");
     }
 
     private void ApplyUiSettings()
     {
-        _gridHost.Padding = new Padding(0, _uiSettings.GridTopPadding, 0, 0);
+        _gridHost.Padding = new Padding(TableLayoutOptions.FromSettings(_uiSettings).ContentPadding);
 
         if (_currentDocument is not null)
         {
