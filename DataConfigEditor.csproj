@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Src/Data/**/*.cs" />
+    <Compile Remove="参考/**/*.cs" />
     <Compile Remove="tests/**/*.cs" />
-    <None Include="Src/Data/**/*.cs" />
+    <None Include="参考/**/*.cs" />
     <None Include="tests/**/*.cs" />
   </ItemGroup>
 
