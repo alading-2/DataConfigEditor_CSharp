@@ -13,6 +13,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Src/Data/**/*.cs" />
+    <Compile Remove="tests/**/*.cs" />
+    <None Include="Src/Data/**/*.cs" />
+    <None Include="tests/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="unvell.ReoGrid.dll" Version="3.0.0" />
   </ItemGroup>
 

@@ -1,1 +1,5 @@
 .worktrees/
+bin/
+obj/
+tests/**/bin/
+tests/**/obj/

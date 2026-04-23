@@ -133,7 +133,7 @@ public static class SourceParser
 
             // 匹配: public static readonly TypeName FieldName = new
             var fieldMatch = Regex.Match(trimmed,
-                @"public\s+static\s+readonly\s+(\w+)\s+(\w+)\s*=\s*new\s*(?:\w*)\s*\{");
+                @"public\s+static\s+readonly\s+(\w+)\s+(\w+)\s*=\s*new\s*(?:\w+)?\s*(?:\(\s*\))?");
             if (!fieldMatch.Success) continue;
 
             string typeName = fieldMatch.Groups[1].Value;
@@ -165,15 +165,22 @@ public static class SourceParser
         var values = new Dictionary<string, string>();
 
         // 找到开括号位置
-        int braceStart = lines[startLine].IndexOf('{');
+        int braceLine = startLine;
+        int braceStart = lines[braceLine].IndexOf('{');
+        while (braceStart < 0 && braceLine + 1 < lines.Length)
+        {
+            braceLine++;
+            braceStart = lines[braceLine].IndexOf('{');
+        }
+
         if (braceStart < 0) return values;
 
         // 找到匹配的闭括号，同时提取属性赋值
         int depth = 0;
-        for (int i = startLine; i < lines.Length; i++)
+        for (int i = braceLine; i < lines.Length; i++)
         {
             string line = lines[i];
-            for (int c = (i == startLine ? braceStart : 0); c < line.Length; c++)
+            for (int c = (i == braceLine ? braceStart : 0); c < line.Length; c++)
             {
                 if (line[c] == '{') depth++;
                 else if (line[c] == '}')
@@ -184,7 +191,7 @@ public static class SourceParser
             }
 
             // 跳过第一行（包含开括号之前的声明）
-            if (i == startLine) continue;
+            if (i == braceLine) continue;
 
             // 尝试匹配: PropName = value, 或 PropName = value
             string trimmed = lines[i].Trim();

@@ -1,3 +1,5 @@
+using DataConfigEditor.Workspace;
+
 namespace DataConfigEditor;
 
 internal static class Program
@@ -6,6 +8,8 @@ internal static class Program
     static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm());
+
+        var options = AppLaunchOptions.Parse(args);
+        Application.Run(new MainForm(options));
     }
 }

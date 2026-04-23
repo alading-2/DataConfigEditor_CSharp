@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Fixtures/**/*.cs" />
+    <Content Include="Fixtures/**/*.cs" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\..\Src\Core\*.cs" Link="Src\Core\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Src\Documents\*.cs" Link="Src\Documents\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Src\Workspace\*.cs" Link="Src\Workspace\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Src\Presentation\*.cs" Link="Src\Presentation\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Src\Parsing\*.cs" Link="Src\Parsing\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

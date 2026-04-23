@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "DataConfigEditor.sln"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "DataConfigEditor.csproj"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run:test-data",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "DataConfigEditor.csproj",
+        "--",
+        "E:\\Godot\\Games\\MyGames\\复刻土豆兄弟\\brotato-my\\Data\\DataNew"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
