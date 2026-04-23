@@ -19,6 +19,7 @@
     <Compile Include="..\..\Src\Core\*.cs" Link="Src\Core\%(Filename)%(Extension)" />
     <Compile Include="..\..\Src\Documents\*.cs" Link="Src\Documents\%(Filename)%(Extension)" />
     <Compile Include="..\..\Src\Workspace\*.cs" Link="Src\Workspace\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Src\Settings\*.cs" Link="Src\Settings\%(Filename)%(Extension)" />
     <Compile Include="..\..\Src\Presentation\*.cs" Link="Src\Presentation\%(Filename)%(Extension)" />
     <Compile Include="..\..\Src\Parsing\*.cs" Link="Src\Parsing\%(Filename)%(Extension)" />
   </ItemGroup>

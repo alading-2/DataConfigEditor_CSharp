@@ -3,3 +3,5 @@ bin/
 obj/
 tests/**/bin/
 tests/**/obj/
+.history/
+.specstory/
