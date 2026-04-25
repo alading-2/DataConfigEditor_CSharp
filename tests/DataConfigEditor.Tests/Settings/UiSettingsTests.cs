@@ -37,4 +37,18 @@ public class UiSettingsTests
         Assert.Equal(13f, updated.GridFontSize);
         Assert.True(updated.GridRowHeight >= 31);
     }
+
+    [Fact]
+    public void Normalize_TrimAssemblyPathAndDropWhitespaceOnlyValue()
+    {
+        var settings = new UiSettings
+        {
+            MetadataAssemblyPath = "  /tmp/game/bin/Debug/net10.0-windows/Game.dll  ",
+        };
+
+        var normalized = settings.Normalize();
+
+        Assert.Equal("/tmp/game/bin/Debug/net10.0-windows/Game.dll", normalized.MetadataAssemblyPath);
+        Assert.Equal("", (settings with { MetadataAssemblyPath = "   " }).Normalize().MetadataAssemblyPath);
+    }
 }

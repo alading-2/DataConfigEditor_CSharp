@@ -23,6 +23,13 @@ public sealed record TableViewState
         return this with { Filters = filters };
     }
 
+    public TableViewState WithoutFilter(string columnKey)
+    {
+        var filters = new Dictionary<string, TableFilter>(Filters, StringComparer.OrdinalIgnoreCase);
+        filters.Remove(columnKey);
+        return this with { Filters = filters };
+    }
+
     public TableViewState ClearFilters() =>
         this with { SearchText = "", Filters = new Dictionary<string, TableFilter>(StringComparer.OrdinalIgnoreCase) };
 
@@ -42,8 +49,9 @@ public sealed record TableViewState
 
     public TableViewResult Apply(TableDocument document)
     {
+        var columnsByKey = document.Columns.ToDictionary(column => column.Key, StringComparer.OrdinalIgnoreCase);
         var rows = document.Rows
-            .Where(row => MatchesFilters(row))
+            .Where(row => MatchesFilters(row, columnsByKey))
             .Where(row => MatchesSearch(document, row))
             .ToArray();
 
@@ -54,12 +62,14 @@ public sealed record TableViewState
             SearchText: SearchText);
     }
 
-    private bool MatchesFilters(TableRow row)
+    private bool MatchesFilters(TableRow row, IReadOnlyDictionary<string, TableColumn> columnsByKey)
     {
         foreach (var filter in Filters.Values.Where(IsActive))
         {
             var value = TableSorter.GetCellValue(row, filter.ColumnKey);
-            if (!filter.Matches(value))
+            var rawValue = TableSorter.GetRawCellValue(row, filter.ColumnKey);
+            columnsByKey.TryGetValue(filter.ColumnKey, out var column);
+            if (!filter.Matches(column, value, rawValue))
                 return false;
         }
 
@@ -87,6 +97,8 @@ public sealed record TableViewState
     private static bool IsActive(TableFilter filter)
     {
         return filter.Mode is TableFilterMode.IsEmpty or TableFilterMode.IsNotEmpty ||
+               filter.Values.Count > 0 ||
+               !string.IsNullOrWhiteSpace(filter.SecondaryValue) ||
                !string.IsNullOrWhiteSpace(filter.Value);
     }
 }

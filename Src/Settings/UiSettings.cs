@@ -28,6 +28,7 @@ public sealed record UiSettings
     public bool FreezeInstanceColumn { get; init; } = true;
     public bool ShowHeaderSummary { get; init; } = true;
     public GridColumnSizingMode ColumnSizingMode { get; init; } = GridColumnSizingMode.Fixed;
+    public string MetadataAssemblyPath { get; init; } = "";
 
     public UiSettings Normalize()
     {
@@ -44,6 +45,9 @@ public sealed record UiSettings
             HeaderHeight = Math.Clamp(HeaderHeight, MinHeaderHeight, MaxHeaderHeight),
             InstanceColumnWidth = Math.Clamp(InstanceColumnWidth, MinInstanceColumnWidth, MaxInstanceColumnWidth),
             ColumnSizingMode = mode,
+            MetadataAssemblyPath = string.IsNullOrWhiteSpace(MetadataAssemblyPath)
+                ? ""
+                : MetadataAssemblyPath.Trim(),
         };
     }
 }

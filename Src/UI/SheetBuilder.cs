@@ -38,6 +38,7 @@ public sealed class SheetBuilder
                     Frozen = layout.FreezeInstanceColumn && column.Key == "__instance",
                     Width = column.Key == "__instance" ? layout.InstanceColumnWidth : layout.DefaultColumnWidth,
                 };
+                gridColumn.HeaderCell.ToolTipText = BuildColumnTooltip(column);
                 grid.Columns.Add(gridColumn);
             }
 
@@ -47,6 +48,23 @@ public sealed class SheetBuilder
                 values.AddRange(row.Cells.Select(cell => cell.Value));
                 var rowIndex = grid.Rows.Add(values.Cast<object>().ToArray());
                 grid.Rows[rowIndex].Height = layout.RowHeight;
+                grid.Rows[rowIndex].Cells[0].ToolTipText = row.Header;
+
+                for (var cellIndex = 0; cellIndex < row.Cells.Count; cellIndex++)
+                {
+                    var cell = row.Cells[cellIndex];
+                    if (!string.IsNullOrWhiteSpace(cell.RawValue) &&
+                        !string.Equals(cell.RawValue, cell.Value, StringComparison.Ordinal))
+                    {
+                        grid.Rows[rowIndex].Cells[cellIndex + 1].ToolTipText = cell.RawValue;
+                        continue;
+                    }
+
+                    if (cell.IsImplicitDefault)
+                    {
+                        grid.Rows[rowIndex].Cells[cellIndex + 1].ToolTipText = "未显式赋值，当前显示 CLR 默认值";
+                    }
+                }
             }
 
             if (grid.Rows.Count > 0 && grid.Columns.Count > 0)
@@ -62,5 +80,21 @@ public sealed class SheetBuilder
         {
             grid.ResumeLayout();
         }
+    }
+
+    private static string BuildColumnTooltip(TableColumn column)
+    {
+        var parts = new List<string> { column.Header };
+
+        if (!string.IsNullOrWhiteSpace(column.Summary) && column.Summary != "未注释")
+            parts.Add(column.Summary);
+
+        if (!string.IsNullOrWhiteSpace(column.TypeName))
+            parts.Add($"类型: {column.TypeName}");
+
+        if (column.IsEnum && column.EnumOptions.Count > 0)
+            parts.Add($"枚举项: {string.Join(", ", column.EnumOptions.Select(option => option.Name))}");
+
+        return string.Join(Environment.NewLine, parts);
     }
 }

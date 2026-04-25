@@ -25,6 +25,8 @@
         "--project",
         "DataConfigEditor.csproj",
         "--",
+        "--dll",
+        "E:\\Godot\\Games\\MyGames\\复刻土豆兄弟\\brotato-my\\.godot\\mono\\temp\\bin\\Debug\\Brotato_my.dll",
         "E:\\Godot\\Games\\MyGames\\复刻土豆兄弟\\brotato-my\\Data\\DataNew"
       ],
       "problemMatcher": "$msCompile"

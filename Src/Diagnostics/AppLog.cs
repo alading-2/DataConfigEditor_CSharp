@@ -20,19 +20,32 @@ public static class AppLog
 
     private static void Write(string level, string message)
     {
+        var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
+
         try
         {
             Directory.CreateDirectory(AppDirectory);
-            var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}{Environment.NewLine}";
 
             lock (SyncRoot)
             {
-                File.AppendAllText(LogPath, line);
+                File.AppendAllText(LogPath, line + Environment.NewLine);
             }
         }
         catch
         {
             // Swallow logging failures. Diagnostics must never crash the app.
+        }
+
+        try
+        {
+            if (level == "ERROR")
+                Console.Error.WriteLine(line);
+            else
+                Console.WriteLine(line);
+        }
+        catch
+        {
+            // Swallow console logging failures as well.
         }
     }
 }

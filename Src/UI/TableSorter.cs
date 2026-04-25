@@ -41,6 +41,14 @@ public static class TableSorter
         return row.Cells.FirstOrDefault(cell => cell.ColumnKey == columnKey)?.Value ?? "";
     }
 
+    internal static string GetRawCellValue(TableRow row, string columnKey)
+    {
+        if (columnKey == "__instance")
+            return row.Header;
+
+        return row.Cells.FirstOrDefault(cell => cell.ColumnKey == columnKey)?.RawValue ?? "";
+    }
+
     private static CellSortKey GetSortKey(string value)
     {
         var normalized = value.Trim().Trim('"');

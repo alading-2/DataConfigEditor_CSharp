@@ -47,6 +47,7 @@ public static class SourceParser
         {
             ClassName = className,
             Namespace = ns,
+            Usings = ParseUsingNamespaces(source),
             BaseClassName = baseClass,
             SourceFile = filePath,
             Properties = properties,
@@ -73,7 +74,7 @@ public static class SourceParser
             if (trimmed.Contains("static readonly")) continue;
 
             var match = Regex.Match(trimmed,
-                @"public\s+([\w<>\?\[\],\s]+?)\s+(\w+)\s*\{[^}]*\}(?:\s*=\s*([^;]+?))?\s*;?");
+                @"public\s+([\w<>\?\[\],\s]+?)\s+(\w+)\s*\{[^}]*\}(?:\s*=\s*([^;]+))?\s*;?");
             if (!match.Success)
             {
                 // 多行属性
@@ -198,16 +199,13 @@ public static class SourceParser
             if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("//") || trimmed.StartsWith("}"))
                 continue;
 
-            var propMatch = Regex.Match(trimmed, @"(\w+)\s*=\s*(.+?)\s*(?:,|$)");
+            var propMatch = Regex.Match(trimmed, @"(\w+)\s*=\s*(.+)\s*(?:,|$)");
             if (propMatch.Success)
             {
                 string propName = propMatch.Groups[1].Value;
-                string propValue = propMatch.Groups[2].Value.Trim();
+                string propValue = TrimTopLevelTrailingComma(propMatch.Groups[2].Value.Trim());
 
-                // 去掉行尾注释
-                int commentIdx = propValue.IndexOf("//", StringComparison.Ordinal);
-                if (commentIdx > 0)
-                    propValue = propValue[..commentIdx].Trim();
+                propValue = RemoveLineCommentOutsideString(propValue);
 
                 // 去掉尾部逗号
                 propValue = propValue.TrimEnd(',');
@@ -217,6 +215,98 @@ public static class SourceParser
         }
 
         return values;
+    }
+
+    private static string RemoveLineCommentOutsideString(string value)
+    {
+        var inString = false;
+        var inChar = false;
+        var escaped = false;
+
+        for (var i = 0; i < value.Length - 1; i++)
+        {
+            var ch = value[i];
+
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if ((inString || inChar) && ch == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (!inChar && ch == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString && ch == '\'')
+            {
+                inChar = !inChar;
+                continue;
+            }
+
+            if (!inString && !inChar && ch == '/' && value[i + 1] == '/')
+                return value[..i].TrimEnd();
+        }
+
+        return value.Trim();
+    }
+
+    private static string TrimTopLevelTrailingComma(string value)
+    {
+        var trimmed = value.TrimEnd();
+        if (trimmed.Length == 0 || trimmed[^1] != ',')
+            return trimmed;
+
+        var depth = 0;
+        var inString = false;
+        var inChar = false;
+        var escaped = false;
+
+        for (var i = 0; i < trimmed.Length - 1; i++)
+        {
+            var ch = trimmed[i];
+
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if ((inString || inChar) && ch == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (!inChar && ch == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString && ch == '\'')
+            {
+                inChar = !inChar;
+                continue;
+            }
+
+            if (inString || inChar)
+                continue;
+
+            if (ch is '(' or '{' or '[')
+                depth++;
+            else if (ch is ')' or '}' or ']')
+                depth = Math.Max(0, depth - 1);
+        }
+
+        return depth == 0 ? trimmed[..^1].TrimEnd() : trimmed;
     }
 
     // ====== 枚举解析 ======
@@ -419,6 +509,14 @@ public static class SourceParser
             return text[2..].Trim();
         return text;
     }
+
+    private static List<string> ParseUsingNamespaces(string source)
+    {
+        return Regex.Matches(source, @"^\s*using\s+([\w.]+)\s*;", RegexOptions.Multiline)
+            .Select(match => match.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
 }
 
 // ====== 数据类 ======
@@ -427,6 +525,7 @@ public class ClassInfo
 {
     public string ClassName = "";
     public string Namespace = "";
+    public List<string> Usings = new();
     public string BaseClassName = "";
     public string SourceFile = "";
     public List<PropertyParseResult> Properties = new();

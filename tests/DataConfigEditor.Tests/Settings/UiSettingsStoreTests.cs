@@ -30,6 +30,7 @@ public class UiSettingsStoreTests
             GridRowHeight = 32,
             FixedColumnWidth = 220,
             ColumnSizingMode = GridColumnSizingMode.AutoFitDisplayedCells,
+            MetadataAssemblyPath = "/tmp/Game.dll",
         };
 
         store.Save(settings);
@@ -40,5 +41,6 @@ public class UiSettingsStoreTests
         Assert.Equal(32, loaded.GridRowHeight);
         Assert.Equal(220, loaded.FixedColumnWidth);
         Assert.Equal(GridColumnSizingMode.AutoFitDisplayedCells, loaded.ColumnSizingMode);
+        Assert.Equal("/tmp/Game.dll", loaded.MetadataAssemblyPath);
     }
 }

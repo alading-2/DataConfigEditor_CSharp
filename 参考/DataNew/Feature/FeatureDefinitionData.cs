@@ -28,22 +28,22 @@ namespace Slime.ConfigNew.Features
         // ====== 基础信息 ======
 
         /// <summary>Feature 名称（唯一标识）</summary>
-        public string? Name { get; set; }
+        public string? Name { get; set; } = (string)DataKey.Name.DefaultValue!;
 
         /// <summary>Feature 处理器 ID</summary>
-        public string? FeatureHandlerId { get; set; }
+        public string? FeatureHandlerId { get; set; } = (string)DataKey.FeatureHandlerId.DefaultValue!;
 
         /// <summary>Feature 描述（用于 UI Tooltip）</summary>
-        public string? Description { get; set; }
+        public string? Description { get; set; } = (string)DataKey.Description.DefaultValue!;
 
         /// <summary>Feature 分类（用于 UI 分组）</summary>
-        public string Category { get; set; } = "";
+        public string Category { get; set; } = (string)DataKey.FeatureCategory.DefaultValue!;
 
         /// <summary>Entity 类型标记</summary>
-        public EntityType EntityType { get; set; }
+        public EntityType EntityType { get; set; } = EntityType.Ability;
 
         /// <summary>是否启用</summary>
-        public bool Enabled { get; set; }
+        public bool Enabled { get; set; } = (bool)DataKey.FeatureEnabled.DefaultValue!;
 
         // ====== 属性修改器 ======
 

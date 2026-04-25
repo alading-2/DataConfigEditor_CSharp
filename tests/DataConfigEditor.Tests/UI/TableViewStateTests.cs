@@ -84,6 +84,42 @@ public class TableViewStateTests
         Assert.Equal(["Dash", "Slam", "Blink"], result.Rows.Select(row => row.Header));
     }
 
+    [Fact]
+    public void Apply_InSetFilter_MatchesEnumMemberNameAgainstRawExpression()
+    {
+        var document = CreateDocument();
+        var state = TableViewState.Empty.WithFilter(
+            new TableFilter("Trigger", TableFilterMode.InSet, values: ["Manual", "Passive"]));
+
+        var result = state.Apply(document);
+
+        Assert.Equal(["Dash", "Slam"], result.Rows.Select(row => row.Header));
+    }
+
+    [Fact]
+    public void Apply_GreaterThanFilter_UsesNumericComparison()
+    {
+        var document = CreateDocument();
+        var state = TableViewState.Empty.WithFilter(
+            new TableFilter("Cooldown", TableFilterMode.GreaterThan, "1.0"));
+
+        var result = state.Apply(document);
+
+        Assert.Equal(["Slam"], result.Rows.Select(row => row.Header));
+    }
+
+    [Fact]
+    public void Apply_BetweenFilter_UsesInclusiveNumericRange()
+    {
+        var document = CreateDocument();
+        var state = TableViewState.Empty.WithFilter(
+            new TableFilter("Cooldown", TableFilterMode.Between, "0.3", "2.0"));
+
+        var result = state.Apply(document);
+
+        Assert.Equal(["Dash"], result.Rows.Select(row => row.Header));
+    }
+
     private static TableDocument CreateDocument()
     {
         return new TableDocument
@@ -94,20 +130,52 @@ public class TableViewStateTests
             [
                 new TableColumn { Key = "__instance", Header = "实例名" },
                 new TableColumn { Key = "Name", Header = "Name", Summary = "名称" },
-                new TableColumn { Key = "Trigger", Header = "Trigger", Summary = "触发模式" },
-                new TableColumn { Key = "Cooldown", Header = "Cooldown", Summary = "冷却" },
+                new TableColumn
+                {
+                    Key = "Trigger",
+                    Header = "Trigger",
+                    Summary = "触发模式",
+                    TypeName = "AbilityTriggerMode",
+                    IsEnum = true,
+                    EnumOptions =
+                    [
+                        new TableEnumOption { Name = "Manual" },
+                        new TableEnumOption { Name = "Auto" },
+                        new TableEnumOption { Name = "Passive" },
+                    ],
+                },
+                new TableColumn
+                {
+                    Key = "Cooldown",
+                    Header = "Cooldown",
+                    Summary = "冷却",
+                    TypeName = "float",
+                    IsNumeric = true,
+                },
                 new TableColumn { Key = "Tags", Header = "Tags", Summary = "标签" },
             ],
             Rows =
             [
-                CreateRow("Dash", ("Name", "冲刺"), ("Trigger", "Manual"), ("Cooldown", "1.0f"), ("Tags", "Move")),
-                CreateRow("Slam", ("Name", "裂地"), ("Trigger", "Auto"), ("Cooldown", "3.5f"), ("Tags", "")),
-                CreateRow("Blink", ("Name", "闪现"), ("Trigger", "Auto"), ("Cooldown", "0.25f"), ("Tags", "Move")),
+                CreateRow("Dash",
+                    ("Name", "冲刺", "冲刺"),
+                    ("Trigger", "Manual", "AbilityTriggerMode.Manual"),
+                    ("Cooldown", "1.0f", "1.0f"),
+                    ("Tags", "Move", "Move")),
+                CreateRow("Slam",
+                    ("Name", "裂地", "裂地"),
+                    ("Trigger", "Passive", "AbilityTriggerMode.Passive"),
+                    ("Cooldown", "3.5f", "3.5f"),
+                    ("Tags", "", "")),
+                CreateRow("Blink",
+                    ("Name", "闪现", "闪现"),
+                    ("Trigger", "Auto", "AbilityTriggerMode.Auto"),
+                    ("Cooldown", "0.25f", "0.25f"),
+                    ("Tags", "Move", "Move")),
             ],
         };
     }
 
-    private static TableRow CreateRow(string header, params (string ColumnKey, string Value)[] cells)
+    private static TableRow CreateRow(string header, params (string ColumnKey, string Value, string RawValue)[] cells)
     {
         return new TableRow
         {
@@ -116,6 +184,7 @@ public class TableViewStateTests
             {
                 ColumnKey = cell.ColumnKey,
                 Value = cell.Value,
+                RawValue = cell.RawValue,
             }).ToArray(),
         };
     }

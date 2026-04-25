@@ -8,6 +8,7 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        AppLog.Info($"Process start. args=[{string.Join(", ", args)}]");
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += (_, e) =>
@@ -26,6 +27,8 @@ internal static class Program
         };
 
         var options = AppLaunchOptions.Parse(args);
+        AppLog.Info($"Initial directory: {options.InitialDirectory}");
+        AppLog.Info($"Initial metadata DLL: {options.MetadataAssemblyPath}");
         Application.Run(new MainForm(options));
     }
 }

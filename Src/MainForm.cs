@@ -1,4 +1,5 @@
 using DataConfigEditor.Diagnostics;
+using DataConfigEditor.Core;
 using DataConfigEditor.Documents;
 using DataConfigEditor.Parsing;
 using DataConfigEditor.Presentation;
@@ -21,7 +22,6 @@ public sealed class MainForm : Form
     private readonly AppLaunchOptions _launchOptions;
     private readonly WorkspaceService _workspaceService = new();
     private readonly WorkspacePresenter _presenter = new();
-    private readonly CsTableParser _tableParser = new();
     private readonly SheetBuilder _sheetBuilder = new();
     private readonly RecentDirectoryStore _recentStore;
     private readonly UiSettingsStore _uiSettingsStore;
@@ -34,6 +34,7 @@ public sealed class MainForm : Form
     private Label _messageLabel = null!;
     private ToolStrip _toolStrip = null!;
     private ToolStripDropDownButton _recentButton = null!;
+    private ToolStripDropDownButton _assemblyButton = null!;
     private ToolStripButton _showHiddenButton = null!;
     private ToolStripTextBox _searchBox = null!;
     private ToolStripButton _filterCurrentButton = null!;
@@ -43,10 +44,12 @@ public sealed class MainForm : Form
     private ToolStripStatusLabel _statusLabel = null!;
 
     private string? _currentDirectory;
+    private string? _currentFilePath;
     private TableDocument? _currentDocument;
     private TableViewState _tableViewState = TableViewState.Empty;
     private UiSettings _uiSettings;
     private WorkspaceSettings _workspaceSettings;
+    private ITypeMetadataProvider? _typeMetadataProvider;
 
     public MainForm(AppLaunchOptions launchOptions)
     {
@@ -60,6 +63,15 @@ public sealed class MainForm : Form
         _workspaceSettingsStore = new WorkspaceSettingsStore(Path.Combine(appData, "workspace-settings.json"));
         _uiSettings = _uiSettingsStore.Load();
         _workspaceSettings = _workspaceSettingsStore.Load();
+        if (!string.IsNullOrWhiteSpace(_launchOptions.MetadataAssemblyPath))
+        {
+            _uiSettings = (_uiSettings with
+            {
+                MetadataAssemblyPath = _launchOptions.MetadataAssemblyPath,
+            }).Normalize();
+        }
+
+        _typeMetadataProvider = CreateTypeMetadataProvider(_uiSettings.MetadataAssemblyPath);
 
         Text = "DataConfigEditor - 工作区表格浏览器";
         Size = new Size(1400, 800);
@@ -103,6 +115,12 @@ public sealed class MainForm : Form
         _recentButton = new ToolStripDropDownButton("最近目录");
         _toolStrip.Items.Add(_recentButton);
 
+        _assemblyButton = new ToolStripDropDownButton("类型DLL");
+        _assemblyButton.DropDownItems.Add("加载 DLL...", null, (_, _) => PromptLoadMetadataAssembly());
+        _assemblyButton.DropDownItems.Add("清除 DLL", null, (_, _) => ClearMetadataAssembly());
+        _toolStrip.Items.Add(_assemblyButton);
+        RefreshAssemblyButton();
+
         _showHiddenButton = new ToolStripButton("显示隐藏项")
         {
             CheckOnClick = true,
@@ -131,8 +149,8 @@ public sealed class MainForm : Form
         };
         _toolStrip.Items.Add(_searchBox);
 
-        _filterCurrentButton = new ToolStripButton("筛选当前值");
-        _filterCurrentButton.Click += (_, _) => FilterCurrentCell();
+        _filterCurrentButton = new ToolStripButton("筛选当前列");
+        _filterCurrentButton.Click += (_, _) => ShowColumnFilterDialog();
         _toolStrip.Items.Add(_filterCurrentButton);
 
         _clearFiltersButton = new ToolStripButton("清除筛选");
@@ -252,7 +270,9 @@ public sealed class MainForm : Form
         try
         {
             AppLog.Info($"OpenFile: {filePath}");
-            var document = _tableParser.ParseFile(filePath);
+            _currentFilePath = filePath;
+            var parser = CreateTableParser();
+            var document = parser.ParseFile(filePath);
             AppLog.Info(
                 $"Parse result: title={document.Title}, isTable={document.IsTable}, columns={document.Columns.Count}, rows={document.Rows.Count}");
 
@@ -312,6 +332,7 @@ public sealed class MainForm : Form
         }
 
         _currentDocument = null;
+        _currentFilePath = null;
         _tableViewState = TableViewState.Empty;
         CreateFreshGrid(hidden: true);
         _messageLabel.Visible = true;
@@ -381,7 +402,14 @@ public sealed class MainForm : Form
             if (e.ColumnIndex < 0 || e.ColumnIndex >= _grid.Columns.Count)
                 return;
 
-            _tableViewState = _tableViewState.ToggleSort(_grid.Columns[e.ColumnIndex].Name);
+            var columnKey = _grid.Columns[e.ColumnIndex].Name;
+            if (e.Button == MouseButtons.Right)
+            {
+                ShowColumnFilterDialog(columnKey);
+                return;
+            }
+
+            _tableViewState = _tableViewState.ToggleSort(columnKey);
             RenderCurrentTable();
         };
 
@@ -407,14 +435,37 @@ public sealed class MainForm : Form
         UpdateTableStatus(result);
     }
 
-    private void FilterCurrentCell()
+    private void ShowColumnFilterDialog(string? explicitColumnKey = null)
     {
-        if (_currentDocument is null || _grid.CurrentCell is null)
+        if (_currentDocument is null || !_currentDocument.IsTable)
             return;
 
-        var column = _grid.Columns[_grid.CurrentCell.ColumnIndex];
-        var value = Convert.ToString(_grid.CurrentCell.Value) ?? "";
-        _tableViewState = _tableViewState.WithFilter(new TableFilter(column.Name, TableFilterMode.Equals, value));
+        var columnKey = explicitColumnKey;
+        if (string.IsNullOrWhiteSpace(columnKey))
+        {
+            if (_grid.CurrentCell is null)
+                return;
+
+            columnKey = _grid.Columns[_grid.CurrentCell.ColumnIndex].Name;
+        }
+
+        var column = _currentDocument.Columns.FirstOrDefault(item =>
+            string.Equals(item.Key, columnKey, StringComparison.OrdinalIgnoreCase));
+        if (column is null)
+            return;
+
+        var existingFilter = _tableViewState.Filters.TryGetValue(column.Key, out var filter)
+            ? filter
+            : null;
+
+        using var dialog = new ColumnFilterDialog(column, existingFilter);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        _tableViewState = dialog.SelectedFilter is null
+            ? _tableViewState.WithoutFilter(column.Key)
+            : _tableViewState.WithFilter(dialog.SelectedFilter);
+
         RenderCurrentTable();
     }
 
@@ -439,6 +490,8 @@ public sealed class MainForm : Form
         _workspaceSettings = result.WorkspaceSettings;
         _uiSettingsStore.Save(_uiSettings);
         _workspaceSettingsStore.Save(_workspaceSettings);
+        _typeMetadataProvider = CreateTypeMetadataProvider(_uiSettings.MetadataAssemblyPath);
+        RefreshAssemblyButton();
         ApplyUiSettings();
 
         if (_showHiddenButton.Checked != _workspaceSettings.ShowHiddenEntries)
@@ -503,5 +556,102 @@ public sealed class MainForm : Form
             parts.Add($"排序: {_tableViewState.Sort.ColumnKey} {_tableViewState.Sort.Direction}");
 
         _statusLabel.Text = string.Join(" | ", parts);
+    }
+
+    private CsTableParser CreateTableParser()
+    {
+        return new CsTableParser(_typeMetadataProvider, allowAutoAssemblyDiscovery: false);
+    }
+
+    private static ITypeMetadataProvider? CreateTypeMetadataProvider(string assemblyPath)
+    {
+        if (string.IsNullOrWhiteSpace(assemblyPath) || !File.Exists(assemblyPath))
+            return null;
+
+        AppLog.Info($"CreateTypeMetadataProvider: {assemblyPath}");
+        return new AssemblyTypeMetadataProvider(assemblyPath);
+    }
+
+    private void PromptLoadMetadataAssembly()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "选择类型元数据 DLL",
+            Filter = "程序集 (*.dll)|*.dll",
+            CheckFileExists = true,
+            Multiselect = false,
+            InitialDirectory = ResolveAssemblyInitialDirectory(),
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            AppLog.Info($"Load metadata DLL requested: {dialog.FileName}");
+            var provider = new AssemblyTypeMetadataProvider(dialog.FileName);
+            _typeMetadataProvider = provider;
+            _uiSettings = (_uiSettings with { MetadataAssemblyPath = provider.AssemblyPath }).Normalize();
+            _uiSettingsStore.Save(_uiSettings);
+            RefreshAssemblyButton();
+            ReopenCurrentFile();
+            AppLog.Info($"Load metadata DLL succeeded: {provider.AssemblyPath}");
+            UpdateStatus($"已加载 DLL: {Path.GetFileName(provider.AssemblyPath)}");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Load metadata DLL failed", ex);
+            MessageBox.Show(this, $"加载 DLL 失败。\n{ex.Message}", "加载 DLL", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            UpdateStatus("加载 DLL 失败");
+        }
+    }
+
+    private void ClearMetadataAssembly()
+    {
+        if (string.IsNullOrWhiteSpace(_uiSettings.MetadataAssemblyPath))
+            return;
+
+        _typeMetadataProvider = null;
+        _uiSettings = (_uiSettings with { MetadataAssemblyPath = "" }).Normalize();
+        _uiSettingsStore.Save(_uiSettings);
+        RefreshAssemblyButton();
+        ReopenCurrentFile();
+        AppLog.Info("Metadata DLL cleared.");
+        UpdateStatus("已清除 DLL 绑定。");
+    }
+
+    private void RefreshAssemblyButton()
+    {
+        var hasAssembly = !string.IsNullOrWhiteSpace(_uiSettings.MetadataAssemblyPath);
+        _assemblyButton.Text = hasAssembly
+            ? $"DLL: {Path.GetFileName(_uiSettings.MetadataAssemblyPath)}"
+            : "类型DLL";
+        _assemblyButton.ToolTipText = hasAssembly
+            ? _uiSettings.MetadataAssemblyPath
+            : "未加载类型元数据 DLL。";
+
+        if (_assemblyButton.DropDownItems.Count >= 2)
+            _assemblyButton.DropDownItems[1].Enabled = hasAssembly;
+    }
+
+    private string ResolveAssemblyInitialDirectory()
+    {
+        if (!string.IsNullOrWhiteSpace(_uiSettings.MetadataAssemblyPath))
+        {
+            var configuredDirectory = Path.GetDirectoryName(_uiSettings.MetadataAssemblyPath);
+            if (!string.IsNullOrWhiteSpace(configuredDirectory) && Directory.Exists(configuredDirectory))
+                return configuredDirectory;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_currentDirectory) && Directory.Exists(_currentDirectory))
+            return _currentDirectory;
+
+        return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+    }
+
+    private void ReopenCurrentFile()
+    {
+        if (!string.IsNullOrWhiteSpace(_currentFilePath) && File.Exists(_currentFilePath))
+            OpenFile(_currentFilePath);
     }
 }

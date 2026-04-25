@@ -10,12 +10,17 @@ public class SettingsViewModelTests
     public void Apply_ReturnsCurrentDraftWithoutClosing()
     {
         var model = new SettingsViewModel(UiSettings.Default, WorkspaceSettings.Default);
-        model.UiDraft = model.UiDraft with { GridRowHeight = 36 };
+        model.UiDraft = model.UiDraft with
+        {
+            GridRowHeight = 36,
+            MetadataAssemblyPath = "  /tmp/Game.dll ",
+        };
 
         var result = model.Apply();
 
         Assert.False(result.ShouldClose);
         Assert.Equal(36, result.UiSettings.GridRowHeight);
+        Assert.Equal("/tmp/Game.dll", result.UiSettings.MetadataAssemblyPath);
     }
 
     [Fact]
