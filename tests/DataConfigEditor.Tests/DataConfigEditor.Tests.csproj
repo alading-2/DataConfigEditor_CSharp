@@ -23,6 +23,7 @@
     <Compile Include="..\..\Src\UI\TableLayoutOptions.cs" Link="Src\UI\TableLayoutOptions.cs" />
     <Compile Include="..\..\Src\UI\SettingsViewModel.cs" Link="Src\UI\SettingsViewModel.cs" />
     <Compile Include="..\..\Src\UI\TableFilter.cs" Link="Src\UI\TableFilter.cs" />
+    <Compile Include="..\..\Src\UI\TableGridViewport.cs" Link="Src\UI\TableGridViewport.cs" />
     <Compile Include="..\..\Src\UI\TableSorter.cs" Link="Src\UI\TableSorter.cs" />
     <Compile Include="..\..\Src\UI\TableViewState.cs" Link="Src\UI\TableViewState.cs" />
     <Compile Include="..\..\Src\Presentation\*.cs" Link="Src\Presentation\%(Filename)%(Extension)" />

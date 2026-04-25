@@ -120,6 +120,147 @@ public class TableViewStateTests
         Assert.Equal(["Dash"], result.Rows.Select(row => row.Header));
     }
 
+    [Fact]
+    public void GetSupportedModes_EnumColumn_OnlyReturnsEnumCompatibleFilters()
+    {
+        var document = CreateDocument();
+        var column = document.Columns.Single(item => item.Key == "Trigger");
+
+        var modes = TableFilterCapabilities.GetSupportedModes(column);
+
+        Assert.Equal(
+            [TableFilterMode.InSet, TableFilterMode.IsEmpty, TableFilterMode.IsNotEmpty],
+            modes);
+        Assert.DoesNotContain(TableFilterMode.GreaterThan, modes);
+        Assert.DoesNotContain(TableFilterMode.Contains, modes);
+    }
+
+    [Fact]
+    public void GetSupportedModes_NumericColumn_ReturnsNumericFiltersWithoutTextContains()
+    {
+        var document = CreateDocument();
+        var column = document.Columns.Single(item => item.Key == "Cooldown");
+
+        var modes = TableFilterCapabilities.GetSupportedModes(column);
+
+        Assert.Contains(TableFilterMode.GreaterThan, modes);
+        Assert.Contains(TableFilterMode.Between, modes);
+        Assert.DoesNotContain(TableFilterMode.Contains, modes);
+        Assert.DoesNotContain(TableFilterMode.InSet, modes);
+    }
+
+    [Fact]
+    public void GetSupportedModes_TextColumn_ReturnsTextFiltersWithoutNumericOrEnumModes()
+    {
+        var document = CreateDocument();
+        var column = document.Columns.Single(item => item.Key == "Name");
+
+        var modes = TableFilterCapabilities.GetSupportedModes(column);
+
+        Assert.Contains(TableFilterMode.Contains, modes);
+        Assert.DoesNotContain(TableFilterMode.GreaterThan, modes);
+        Assert.DoesNotContain(TableFilterMode.InSet, modes);
+    }
+
+    [Fact]
+    public void ResolveViewport_WhenCurrentRowAndColumnRemain_RestoresThemByIdentity()
+    {
+        var document = CreateDocument();
+        var snapshot = new TableGridViewportSnapshot(
+            CurrentRowHeader: "Slam",
+            CurrentColumnKey: "Cooldown",
+            CurrentRowIndex: 1,
+            CurrentColumnIndex: 3,
+            FirstDisplayedRowHeader: "Slam",
+            FirstDisplayedRowIndex: 1,
+            FirstDisplayedColumnKey: "Trigger",
+            FirstDisplayedColumnIndex: 2,
+            HorizontalScrollingOffset: 240);
+
+        var target = TableGridViewport.Resolve(snapshot, document.Columns, document.Rows);
+
+        Assert.Equal(1, target.CurrentRowIndex);
+        Assert.Equal(3, target.CurrentColumnIndex);
+        Assert.Equal(1, target.FirstDisplayedRowIndex);
+        Assert.Equal(2, target.FirstDisplayedColumnIndex);
+        Assert.Equal(240, target.HorizontalScrollingOffset);
+    }
+
+    [Fact]
+    public void ResolveViewport_WhenCurrentRowWasFilteredOut_KeepsViewportNearPreviousPosition()
+    {
+        var document = CreateDocument();
+        var filteredRows = document.Rows
+            .Where(row => row.Header != "Slam")
+            .ToArray();
+        var snapshot = new TableGridViewportSnapshot(
+            CurrentRowHeader: "Slam",
+            CurrentColumnKey: "Cooldown",
+            CurrentRowIndex: 1,
+            CurrentColumnIndex: 3,
+            FirstDisplayedRowHeader: "Slam",
+            FirstDisplayedRowIndex: 1,
+            FirstDisplayedColumnKey: "Trigger",
+            FirstDisplayedColumnIndex: 2,
+            HorizontalScrollingOffset: 240);
+
+        var target = TableGridViewport.Resolve(snapshot, document.Columns, filteredRows);
+
+        Assert.Equal(1, target.CurrentRowIndex);
+        Assert.Equal(3, target.CurrentColumnIndex);
+        Assert.Equal(1, target.FirstDisplayedRowIndex);
+        Assert.Equal(2, target.FirstDisplayedColumnIndex);
+        Assert.Equal(240, target.HorizontalScrollingOffset);
+    }
+
+    [Fact]
+    public void ResolveViewport_WhenNoRowsRemain_PreservesColumnViewport()
+    {
+        var document = CreateDocument();
+        var snapshot = new TableGridViewportSnapshot(
+            CurrentRowHeader: "Slam",
+            CurrentColumnKey: "Cooldown",
+            CurrentRowIndex: 1,
+            CurrentColumnIndex: 3,
+            FirstDisplayedRowHeader: "Slam",
+            FirstDisplayedRowIndex: 1,
+            FirstDisplayedColumnKey: "Trigger",
+            FirstDisplayedColumnIndex: 2,
+            HorizontalScrollingOffset: 240);
+
+        var target = TableGridViewport.Resolve(snapshot, document.Columns, []);
+
+        Assert.Equal(-1, target.CurrentRowIndex);
+        Assert.Equal(3, target.CurrentColumnIndex);
+        Assert.Equal(-1, target.FirstDisplayedRowIndex);
+        Assert.Equal(2, target.FirstDisplayedColumnIndex);
+        Assert.Equal(240, target.HorizontalScrollingOffset);
+    }
+
+    [Fact]
+    public void ResolveViewport_WhenClearingFilterAfterEmptyResult_RestoresColumnViewport()
+    {
+        var document = CreateDocument();
+        var snapshot = new TableGridViewportSnapshot(
+            CurrentRowHeader: null,
+            CurrentColumnKey: "Cooldown",
+            CurrentRowIndex: -1,
+            CurrentColumnIndex: 3,
+            FirstDisplayedRowHeader: null,
+            FirstDisplayedRowIndex: -1,
+            FirstDisplayedColumnKey: "Trigger",
+            FirstDisplayedColumnIndex: 2,
+            HorizontalScrollingOffset: 240);
+
+        var target = TableGridViewport.Resolve(snapshot, document.Columns, document.Rows);
+
+        Assert.Equal(0, target.CurrentRowIndex);
+        Assert.Equal(3, target.CurrentColumnIndex);
+        Assert.Equal(0, target.FirstDisplayedRowIndex);
+        Assert.Equal(2, target.FirstDisplayedColumnIndex);
+        Assert.Equal(240, target.HorizontalScrollingOffset);
+    }
+
     private static TableDocument CreateDocument()
     {
         return new TableDocument

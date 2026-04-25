@@ -130,7 +130,7 @@ internal sealed class ColumnFilterDialog : Form
 
     private void InitializeModes()
     {
-        foreach (var mode in GetSupportedModes(_column))
+        foreach (var mode in TableFilterCapabilities.GetSupportedModes(_column))
             _modeBox.Items.Add(mode);
 
         if (_column.IsEnum)
@@ -221,38 +221,6 @@ internal sealed class ColumnFilterDialog : Form
     private TableFilterMode SelectedMode => _modeBox.SelectedItem is TableFilterMode mode
         ? mode
         : TableFilterMode.Equals;
-
-    private static IEnumerable<TableFilterMode> GetSupportedModes(TableColumn column)
-    {
-        if (column.IsEnum)
-        {
-            yield return TableFilterMode.InSet;
-            yield return TableFilterMode.Equals;
-            yield return TableFilterMode.IsEmpty;
-            yield return TableFilterMode.IsNotEmpty;
-            yield break;
-        }
-
-        if (column.IsNumeric)
-        {
-            yield return TableFilterMode.Equals;
-            yield return TableFilterMode.NotEquals;
-            yield return TableFilterMode.GreaterThan;
-            yield return TableFilterMode.GreaterThanOrEqual;
-            yield return TableFilterMode.LessThan;
-            yield return TableFilterMode.LessThanOrEqual;
-            yield return TableFilterMode.Between;
-            yield return TableFilterMode.IsEmpty;
-            yield return TableFilterMode.IsNotEmpty;
-            yield break;
-        }
-
-        yield return TableFilterMode.Contains;
-        yield return TableFilterMode.Equals;
-        yield return TableFilterMode.NotEquals;
-        yield return TableFilterMode.IsEmpty;
-        yield return TableFilterMode.IsNotEmpty;
-    }
 
     private static string BuildColumnCaption(TableColumn column)
     {

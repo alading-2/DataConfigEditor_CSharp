@@ -42,6 +42,7 @@ public sealed class MainForm : Form
     private ToolStripButton _settingsButton = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _statusLabel = null!;
+    private ContextMenuStrip? _activeHeaderMenu;
 
     private string? _currentDirectory;
     private string? _currentFilePath;
@@ -403,14 +404,7 @@ public sealed class MainForm : Form
                 return;
 
             var columnKey = _grid.Columns[e.ColumnIndex].Name;
-            if (e.Button == MouseButtons.Right)
-            {
-                ShowColumnFilterDialog(columnKey);
-                return;
-            }
-
-            _tableViewState = _tableViewState.ToggleSort(columnKey);
-            RenderCurrentTable();
+            ShowColumnFilterFromHeader(columnKey, e.ColumnIndex);
         };
 
         _gridHost.Controls.Add(_grid);
@@ -431,8 +425,179 @@ public sealed class MainForm : Form
             Rows = result.Rows,
         };
 
+        var viewport = CaptureGridViewport();
         _sheetBuilder.BuildGrid(_grid, viewDocument, _uiSettings);
+        RestoreGridViewport(viewport, viewDocument);
         UpdateTableStatus(result);
+    }
+
+    private TableGridViewportSnapshot? CaptureGridViewport()
+    {
+        if (_grid.Columns.Count == 0)
+            return null;
+
+        var currentRowIndex = _grid.Rows.Count > 0
+            ? ClampGridIndex(_grid.CurrentCell?.RowIndex ?? 0, _grid.Rows.Count)
+            : -1;
+        var firstDisplayedRowIndex = _grid.Rows.Count > 0
+            ? ClampGridIndex(GetFirstDisplayedScrollingRowIndex(currentRowIndex), _grid.Rows.Count)
+            : -1;
+        var firstDisplayedColumnIndex = ClampGridIndex(GetFirstDisplayedScrollingColumnIndex(0), _grid.Columns.Count);
+        var currentColumnIndex = ClampGridIndex(
+            _grid.CurrentCell?.ColumnIndex ?? firstDisplayedColumnIndex,
+            _grid.Columns.Count);
+
+        return new TableGridViewportSnapshot(
+            CurrentRowHeader: GetGridRowHeader(currentRowIndex),
+            CurrentColumnKey: GetGridColumnKey(currentColumnIndex),
+            CurrentRowIndex: currentRowIndex,
+            CurrentColumnIndex: currentColumnIndex,
+            FirstDisplayedRowHeader: GetGridRowHeader(firstDisplayedRowIndex),
+            FirstDisplayedRowIndex: firstDisplayedRowIndex,
+            FirstDisplayedColumnKey: GetGridColumnKey(firstDisplayedColumnIndex),
+            FirstDisplayedColumnIndex: firstDisplayedColumnIndex,
+            HorizontalScrollingOffset: Math.Max(0, _grid.HorizontalScrollingOffset));
+    }
+
+    private void RestoreGridViewport(TableGridViewportSnapshot? snapshot, TableDocument viewDocument)
+    {
+        if (_grid.Columns.Count == 0)
+            return;
+
+        var target = TableGridViewport.Resolve(snapshot, viewDocument.Columns, viewDocument.Rows);
+        if (target.CurrentColumnIndex < 0)
+            return;
+
+        if (target.CurrentRowIndex >= 0 && target.CurrentRowIndex < _grid.Rows.Count)
+        {
+            _grid.ClearSelection();
+            _grid.CurrentCell = _grid.Rows[target.CurrentRowIndex].Cells[target.CurrentColumnIndex];
+        }
+
+        SetFirstDisplayedScrollingRowIndex(target.FirstDisplayedRowIndex);
+        SetFirstDisplayedScrollingColumnIndex(target.FirstDisplayedColumnIndex);
+        SetHorizontalScrollingOffset(target.HorizontalScrollingOffset);
+    }
+
+    private int GetFirstDisplayedScrollingRowIndex(int fallback)
+    {
+        try
+        {
+            return _grid.FirstDisplayedScrollingRowIndex;
+        }
+        catch (InvalidOperationException)
+        {
+            return fallback;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return fallback;
+        }
+        catch (ArgumentException)
+        {
+            return fallback;
+        }
+    }
+
+    private int GetFirstDisplayedScrollingColumnIndex(int fallback)
+    {
+        try
+        {
+            return _grid.FirstDisplayedScrollingColumnIndex;
+        }
+        catch (InvalidOperationException)
+        {
+            return fallback;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return fallback;
+        }
+        catch (ArgumentException)
+        {
+            return fallback;
+        }
+    }
+
+    private void SetFirstDisplayedScrollingRowIndex(int rowIndex)
+    {
+        if (rowIndex < 0 || rowIndex >= _grid.Rows.Count)
+            return;
+
+        try
+        {
+            _grid.FirstDisplayedScrollingRowIndex = rowIndex;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+
+    private void SetFirstDisplayedScrollingColumnIndex(int columnIndex)
+    {
+        if (columnIndex < 0 || columnIndex >= _grid.Columns.Count)
+            return;
+
+        try
+        {
+            _grid.FirstDisplayedScrollingColumnIndex = columnIndex;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+
+    private void SetHorizontalScrollingOffset(int offset)
+    {
+        try
+        {
+            _grid.HorizontalScrollingOffset = Math.Max(0, offset);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+
+    private string? GetGridRowHeader(int rowIndex)
+    {
+        if (rowIndex < 0 || rowIndex >= _grid.Rows.Count || _grid.Columns.Count == 0)
+            return null;
+
+        return _grid.Rows[rowIndex].Cells[0].Value?.ToString();
+    }
+
+    private string? GetGridColumnKey(int columnIndex)
+    {
+        if (columnIndex < 0 || columnIndex >= _grid.Columns.Count)
+            return null;
+
+        return _grid.Columns[columnIndex].Name;
+    }
+
+    private static int ClampGridIndex(int index, int count)
+    {
+        if (count <= 0)
+            return -1;
+
+        return Math.Min(Math.Max(index, 0), count - 1);
     }
 
     private void ShowColumnFilterDialog(string? explicitColumnKey = null)
@@ -467,6 +632,138 @@ public sealed class MainForm : Form
             : _tableViewState.WithFilter(dialog.SelectedFilter);
 
         RenderCurrentTable();
+    }
+
+    private void ShowColumnFilterFromHeader(string columnKey, int columnIndex)
+    {
+        if (_currentDocument is null || !_currentDocument.IsTable)
+            return;
+
+        var column = _currentDocument.Columns.FirstOrDefault(item =>
+            string.Equals(item.Key, columnKey, StringComparison.OrdinalIgnoreCase));
+        if (column is null)
+            return;
+
+        if (column.IsEnum && column.EnumOptions.Count > 0)
+        {
+            ShowEnumFilterMenu(column, columnIndex);
+            return;
+        }
+
+        if (column.IsBool)
+        {
+            ShowBooleanFilterMenu(column, columnIndex);
+            return;
+        }
+
+        ShowColumnFilterDialog(columnKey);
+    }
+
+    private void ShowEnumFilterMenu(TableColumn column, int columnIndex)
+    {
+        var menu = CreateHeaderFilterMenu();
+        AddClearFilterMenuItem(menu, column);
+        menu.Items.Add(new ToolStripSeparator());
+
+        foreach (var option in column.EnumOptions)
+        {
+            var item = new ToolStripMenuItem(string.IsNullOrWhiteSpace(option.Summary)
+                ? option.Name
+                : $"{option.Name} - {option.Summary}");
+            item.Checked = _tableViewState.Filters.TryGetValue(column.Key, out var filter) &&
+                           filter.Mode == TableFilterMode.InSet &&
+                           filter.Values.Any(value => string.Equals(value, option.Name, StringComparison.OrdinalIgnoreCase));
+            item.Click += (_, _) => ApplySingleValueFilter(column.Key, option.Name);
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new ToolStripSeparator());
+        AddEmptyFilterMenuItems(menu, column);
+        ShowHeaderMenu(menu, columnIndex);
+    }
+
+    private void ShowBooleanFilterMenu(TableColumn column, int columnIndex)
+    {
+        var menu = CreateHeaderFilterMenu();
+        AddClearFilterMenuItem(menu, column);
+        menu.Items.Add(new ToolStripSeparator());
+
+        var trueItem = new ToolStripMenuItem("true");
+        trueItem.Click += (_, _) => ApplyValueFilter(column.Key, TableFilterMode.Equals, "true");
+        menu.Items.Add(trueItem);
+
+        var falseItem = new ToolStripMenuItem("false");
+        falseItem.Click += (_, _) => ApplyValueFilter(column.Key, TableFilterMode.Equals, "false");
+        menu.Items.Add(falseItem);
+
+        menu.Items.Add(new ToolStripSeparator());
+        AddEmptyFilterMenuItems(menu, column);
+        ShowHeaderMenu(menu, columnIndex);
+    }
+
+    private ContextMenuStrip CreateHeaderFilterMenu()
+    {
+        if (_activeHeaderMenu is { IsDisposed: false })
+            _activeHeaderMenu.Close();
+
+        var menu = new ContextMenuStrip();
+        _activeHeaderMenu = menu;
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_activeHeaderMenu, menu))
+                _activeHeaderMenu = null;
+
+            if (!IsDisposed && IsHandleCreated)
+                BeginInvoke(() => menu.Dispose());
+            else
+                menu.Dispose();
+        };
+
+        return menu;
+    }
+
+    private void AddClearFilterMenuItem(ContextMenuStrip menu, TableColumn column)
+    {
+        var clear = new ToolStripMenuItem("清除本列筛选")
+        {
+            Enabled = _tableViewState.Filters.ContainsKey(column.Key),
+        };
+        clear.Click += (_, _) =>
+        {
+            _tableViewState = _tableViewState.WithoutFilter(column.Key);
+            RenderCurrentTable();
+        };
+        menu.Items.Add(clear);
+    }
+
+    private void AddEmptyFilterMenuItems(ContextMenuStrip menu, TableColumn column)
+    {
+        var empty = new ToolStripMenuItem("空值");
+        empty.Click += (_, _) => ApplyValueFilter(column.Key, TableFilterMode.IsEmpty);
+        menu.Items.Add(empty);
+
+        var notEmpty = new ToolStripMenuItem("非空");
+        notEmpty.Click += (_, _) => ApplyValueFilter(column.Key, TableFilterMode.IsNotEmpty);
+        menu.Items.Add(notEmpty);
+    }
+
+    private void ApplySingleValueFilter(string columnKey, string value)
+    {
+        _tableViewState = _tableViewState.WithFilter(
+            new TableFilter(columnKey, TableFilterMode.InSet, values: [value]));
+        RenderCurrentTable();
+    }
+
+    private void ApplyValueFilter(string columnKey, TableFilterMode mode, string value = "")
+    {
+        _tableViewState = _tableViewState.WithFilter(new TableFilter(columnKey, mode, value));
+        RenderCurrentTable();
+    }
+
+    private void ShowHeaderMenu(ContextMenuStrip menu, int columnIndex)
+    {
+        var headerRectangle = _grid.GetCellDisplayRectangle(columnIndex, -1, cutOverflow: true);
+        menu.Show(_grid, new Point(headerRectangle.Left, headerRectangle.Bottom));
     }
 
     private void ClearTableFilters()

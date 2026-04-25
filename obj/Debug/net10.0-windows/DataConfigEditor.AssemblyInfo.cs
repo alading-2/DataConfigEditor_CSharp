@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DataConfigEditor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0d0bef0bb5ee5d399896bd2d56fba9d70443c8d9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c197e2d0b4511e93bc0ed95de8513d9125a2a70b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DataConfigEditor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DataConfigEditor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

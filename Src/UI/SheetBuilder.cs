@@ -22,7 +22,7 @@ public sealed class SheetBuilder
             grid.ColumnHeadersHeight = layout.HeaderHeight;
             grid.RowTemplate.Height = layout.RowHeight;
 
-            if (!document.IsTable || document.Columns.Count == 0 || document.Rows.Count == 0)
+            if (!document.IsTable || document.Columns.Count == 0)
                 return;
 
             foreach (var column in document.Columns)
@@ -65,12 +65,6 @@ public sealed class SheetBuilder
                         grid.Rows[rowIndex].Cells[cellIndex + 1].ToolTipText = "未显式赋值，当前显示 CLR 默认值";
                     }
                 }
-            }
-
-            if (grid.Rows.Count > 0 && grid.Columns.Count > 0)
-            {
-                grid.ClearSelection();
-                grid.CurrentCell = grid.Rows[0].Cells[0];
             }
 
             if (settings.ColumnSizingMode == GridColumnSizingMode.AutoFitDisplayedCells)

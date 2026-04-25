@@ -126,3 +126,55 @@ public sealed record TableFilter
             : normalized;
     }
 }
+
+public static class TableFilterCapabilities
+{
+    public static IReadOnlyList<TableFilterMode> GetSupportedModes(TableColumn column)
+    {
+        if (column.IsEnum)
+        {
+            return
+            [
+                TableFilterMode.InSet,
+                TableFilterMode.IsEmpty,
+                TableFilterMode.IsNotEmpty,
+            ];
+        }
+
+        if (column.IsBool)
+        {
+            return
+            [
+                TableFilterMode.Equals,
+                TableFilterMode.NotEquals,
+                TableFilterMode.IsEmpty,
+                TableFilterMode.IsNotEmpty,
+            ];
+        }
+
+        if (column.IsNumeric)
+        {
+            return
+            [
+                TableFilterMode.Equals,
+                TableFilterMode.NotEquals,
+                TableFilterMode.GreaterThan,
+                TableFilterMode.GreaterThanOrEqual,
+                TableFilterMode.LessThan,
+                TableFilterMode.LessThanOrEqual,
+                TableFilterMode.Between,
+                TableFilterMode.IsEmpty,
+                TableFilterMode.IsNotEmpty,
+            ];
+        }
+
+        return
+        [
+            TableFilterMode.Contains,
+            TableFilterMode.Equals,
+            TableFilterMode.NotEquals,
+            TableFilterMode.IsEmpty,
+            TableFilterMode.IsNotEmpty,
+        ];
+    }
+}
